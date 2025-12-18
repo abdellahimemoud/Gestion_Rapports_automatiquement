@@ -1,0 +1,79 @@
+{% extends 'app_rapports/base.html' %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark d-flex align-items-center gap-2">
+        <i class="bi bi-database-add text-primary"></i> Créer une base de données
+    </h2>
+</div>
+
+<!-- Form Card -->
+<div class="card shadow-sm rounded-4 p-4 bg-light">
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <!-- Nom -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Nom de la connexion</label>
+            {{ form.name }}
+            {% if form.name.errors %}
+                <div class="text-danger small">{{ form.name.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Hôte -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Hôte</label>
+            {{ form.host }}
+            {% if form.host.errors %}
+                <div class="text-danger small">{{ form.host.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Port -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Port</label>
+            {{ form.port }}
+            {% if form.port.errors %}
+                <div class="text-danger small">{{ form.port.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Utilisateur -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Nom d’utilisateur</label>
+            {{ form.user }}
+            {% if form.user.errors %}
+                <div class="text-danger small">{{ form.user.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Mot de passe -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Mot de passe</label>
+            {{ form.password }}
+            {% if form.password.errors %}
+                <div class="text-danger small">{{ form.password.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Nom base -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Nom de la base</label>
+            {{ form.database_name }}
+            {% if form.database_name.errors %}
+                <div class="text-danger small">{{ form.database_name.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-success w-100">
+            <i class="bi bi-check-circle-fill"></i> Enregistrer
+        </button>
+
+    </form>
+</div>
+
+{% endblock %}

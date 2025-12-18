@@ -1,0 +1,42 @@
+{% extends 'app_rapports/base.html' %}
+
+{% block content %}
+
+<!-- SUCCESS CARD -->
+<div class="card shadow-sm rounded-4 border-0 bg-light p-4">
+
+    <!-- MESSAGE -->
+    <div class="alert alert-success d-flex align-items-center gap-3 mb-4 fs-5 rounded-3">
+        <i class="bi bi-check-circle-fill fs-3"></i>
+        <span>
+            La requête <strong>{{ name }}</strong> a été exécutée et envoyée par email avec succès !
+        </span>
+    </div>
+
+    <!-- BUTTON RETURN -->
+    <a href="{% url 'query_list' %}"
+       class="btn btn-primary px-4 py-2 rounded-pill d-inline-flex align-items-center gap-2 shadow-sm">
+        <i class="bi bi-arrow-left-circle"></i> Retour aux requêtes
+    </a>
+
+</div>
+
+<!-- STYLE PRO -->
+<style>
+.alert {
+    font-weight: 500;
+}
+.alert i {
+    font-size: 1.8rem;
+}
+
+.btn i {
+    font-size: 1.1rem;
+}
+
+.card {
+    background: #f8f9fa !important;
+}
+</style>
+
+{% endblock %}

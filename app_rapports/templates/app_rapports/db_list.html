@@ -1,0 +1,128 @@
+{% extends 'app_rapports/base.html' %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+        <i class="bi bi-hdd-network text-primary"></i> Bases de données
+    </h2>
+
+    <a href="{% url 'db_create' %}" 
+       class="btn btn-primary px-4 py-2 rounded-pill shadow-sm d-flex align-items-center gap-2">
+        <i class="bi bi-database-add"></i> Ajouter une base
+    </a>
+</div>
+
+<!-- Table -->
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-0">
+
+        <div class="table-responsive">
+            <table class="table table-hover table-nowrap align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="py-3 px-4">Nom</th>
+                        <th class="py-3">Hôte</th>
+                        <th class="py-3">Port</th>
+                        <th class="py-3">Base</th>
+                        <th class="py-3 text-center">Statut</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for db in dbs %}
+                    <tr class="hover-row">
+                        <td class="fw-semibold px-4">{{ db.name }}</td>
+                        <td>{{ db.host }}</td>
+                        <td>{{ db.port }}</td>
+                        <td>{{ db.database_name }}</td>
+
+                        <td id="status-{{ db.id }}" class="text-center">
+                            <button class="btn btn-outline-primary btn-sm rounded-pill shadow-sm px-3 d-flex align-items-center gap-1 mx-auto"
+                                    onclick="testConnexion('{{ db.id }}')">
+                                <i class="bi bi-play-circle"></i> Tester
+                            </button>
+                        </td>
+                    </tr>
+
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-5 fs-6">
+                            <i class="bi bi-database-x fs-3 d-block mb-2"></i>
+                            Aucune base disponible pour le moment.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+<!-- Test Script -->
+<script>
+function testConnexion(id) {
+    let status = document.getElementById(`status-${id}`);
+    status.innerHTML = `
+        <span class="badge bg-warning text-dark rounded-pill px-3 py-2">
+            <i class="bi bi-hourglass-split"></i> Test...
+        </span>
+    `;
+
+    fetch(`/db/test/${id}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                status.innerHTML = `
+                    <span class="badge bg-success rounded-pill px-3 py-2">
+                        <i class="bi bi-check-circle"></i> Succès
+                    </span>
+                `;
+            } else {
+                status.innerHTML = `
+                    <span class="badge bg-danger rounded-pill px-3 py-2">
+                        <i class="bi bi-x-circle"></i> Échec
+                    </span>
+                `;
+            }
+        })
+        .catch(() => {
+            status.innerHTML = `
+                <span class="badge bg-danger rounded-pill px-3 py-2">
+                    <i class="bi bi-exclamation-octagon"></i> Erreur
+                </span>
+            `;
+        });
+}
+</script>
+
+<!-- Styles PRO -->
+<style>
+.table-nowrap td, .table-nowrap th {
+    white-space: nowrap;
+}
+
+.hover-row:hover {
+    background: #f5f7fa !important;
+    transition: 0.25s ease;
+}
+
+.card {
+    border-radius: 1rem !important;
+}
+
+.btn-outline-primary {
+    font-weight: 500;
+}
+
+.badge {
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+</style>
+
+{% endblock %}
