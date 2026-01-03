@@ -1,30 +1,198 @@
 from celery import shared_task
-from .models import SqlQuery
-from .utils import execute_sql_on_remote, df_to_excel_bytes, send_report_email
+from django.utils import timezone
+from io import BytesIO
+import pandas as pd
 
-@shared_task(bind=True)
+from .models import SqlQuery, Report, ReportExecutionLog
+from .utils import execute_sql_on_remote, send_report_email
+
+
+# =====================================================
+# 🔹 Exécution d'une requête SQL simple 
+# =====================================================
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_kwargs={"countdown": 15, "max_retries": 3},
+)
 def execute_sql_query_task(self, query_id):
     query = SqlQuery.objects.get(id=query_id)
 
-    # 1. Exécuter la requête
-    df = execute_sql_on_remote(query.database, query.sql_text)
+    try:
+        df = execute_sql_on_remote(query.database, query.sql_text)
 
-    # 2. Convertir en Excel
-    excel_bytes = df_to_excel_bytes(df)
+        if df.empty:
+            raise ValueError("La requête SQL n'a retourné aucune donnée.")
 
-    # 3. Emails sélectionnés
-    to_emails = [e.email for e in query.emails.all()]
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Résultats")
+        output.seek(0)
 
-    if not to_emails:
-        raise ValueError("Aucun email sélectionné")
+        attachments = [{
+            "filename": f"{query.name}.xlsx",
+            "content": output.getvalue(),
+            "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }]
 
-    # 4. Envoyer email
-    send_report_email(
-        subject=query.subject,
-        body=query.message or "Veuillez trouver le rapport en pièce jointe.",
-        to_emails=to_emails,
-        excel_bytes=excel_bytes,
-        filename=f"{query.name}.xlsx"
+        to_emails = [e.email for e in query.emails.all()]
+        if not to_emails:
+            raise ValueError("Aucun email TO défini pour cette requête.")
+
+        send_report_email(
+            subject=f"Résultat de la requête : {query.name}",
+            body="Veuillez trouver la requête SQL en pièce jointe.",
+            to_emails=to_emails,
+            attachments=attachments,
+        )
+
+        ReportExecutionLog.objects.create(
+            report=None,
+            query=query,
+            status="success",
+            message="Requête exécutée et email envoyé avec succès",
+        )
+
+    except Exception as e:
+        ReportExecutionLog.objects.create(
+            report=None,
+            query=query,
+            status="error",
+            message=str(e),
+        )
+        raise
+
+
+# =====================================================
+# 🔹 Exécution d’un RAPPORT (PLUSIEURS REQUÊTES)
+# =====================================================
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_kwargs={"countdown": 30, "max_retries": 3},
+)
+def execute_report_task(self, report_id):
+
+    report = Report.objects.get(id=report_id)
+
+    # 🔥 LOG GLOBAL : DÉMARRAGE
+    ReportExecutionLog.objects.create(
+        report=report,
+        query=None,
+        status="success",
+        message="Démarrage de l’exécution du rapport",
     )
 
-    return "Email envoyé avec succès"
+    if not report.queries.exists():
+        ReportExecutionLog.objects.create(
+            report=report,
+            query=None,
+            status="error",
+            message="Aucune requête associée au rapport",
+        )
+        return
+
+    attachments = []
+    has_error = False
+
+    # =================================================
+    # 1️⃣ Exécution des requêtes
+    # =================================================
+    for query in report.queries.all():
+        try:
+            df = execute_sql_on_remote(query.database, query.sql_text)
+
+            if df.empty:
+                df = pd.DataFrame({
+                    "INFO": [f"Aucune donnée retournée pour la requête : {query.name}"]
+                })
+
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df.to_excel(writer, index=False, sheet_name="Résultats")
+            output.seek(0)
+
+            attachments.append({
+                "filename": f"{query.name}.xlsx",
+                "content": output.getvalue(),
+                "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            })
+
+            # ✅ LOG REQUÊTE OK
+            ReportExecutionLog.objects.create(
+                report=report,
+                query=query,
+                status="success",
+                message="Requête exécutée avec succès",
+            )
+
+        except Exception as e:
+            has_error = True
+
+            # ❌ LOG REQUÊTE ERREUR
+            ReportExecutionLog.objects.create(
+                report=report,
+                query=query,
+                status="error",
+                message=str(e),
+            )
+
+            attachments.append({
+                "filename": f"{query.name}_ERREUR.txt",
+                "content": str(e).encode("utf-8"),
+                "mimetype": "text/plain",
+            })
+
+    # =================================================
+    # 2️⃣ Envoi Email
+    # =================================================
+    to_emails = [e.email for e in report.to_emails.all()]
+    cc_emails = [e.email for e in report.cc_emails.all()]
+
+    if not to_emails:
+        has_error = True
+        ReportExecutionLog.objects.create(
+            report=report,
+            query=None,
+            status="error",
+            message="Aucun destinataire TO défini pour le rapport",
+        )
+    else:
+        try:
+            send_report_email(
+                subject=report.subject or f"Rapport : {report.name}",
+                body=report.message or "Veuillez trouver les rapports en pièces jointes.",
+                to_emails=to_emails,
+                cc_emails=cc_emails,
+                attachments=attachments,
+            )
+
+            # ✅ LOG GLOBAL EMAIL OK
+            ReportExecutionLog.objects.create(
+                report=report,
+                query=None,
+                status="success",
+                message="Rapport envoyé par email avec succès",
+            )
+
+        except Exception as e:
+            has_error = True
+            ReportExecutionLog.objects.create(
+                report=report,
+                query=None,
+                status="error",
+                message=f"Erreur lors de l’envoi email : {str(e)}",
+            )
+            raise
+
+    # =================================================
+    # 3️⃣ FIN
+    # =================================================
+    report.last_executed_at = timezone.now()
+    report.save(update_fields=["last_executed_at"])
+
+    return (
+        f" Rapport '{report.name}' exécuté avec erreurs"
+        if has_error
+        else f" Rapport '{report.name}' exécuté avec succès"
+    )

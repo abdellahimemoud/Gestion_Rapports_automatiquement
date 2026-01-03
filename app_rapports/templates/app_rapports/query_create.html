@@ -3,238 +3,85 @@
 
 {% block content %}
 
-<!-- ================= HEADER ================= -->
+<!-- Header -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="fw-bold text-dark d-flex align-items-center gap-2">
-        <i class="bi bi-calendar-check text-primary"></i>
+        <i class="bi bi-database text-primary"></i>
         Créer une requête SQL
     </h2>
+
+        <!-- Bouton Retour -->
+    <a href="{% url 'query_list' %}"
+       class="btn btn-primary rounded-pill px-4 shadow-sm">
+        <i class="bi-arrow-left-short"></i>
+        Retour
+    </a>
 </div>
 
-<!-- ================= CARD ================= -->
+<!-- Card -->
 <div class="card shadow-sm rounded-4 p-4 bg-light">
 
-<form method="post" novalidate id="query-form">
+<form method="post" novalidate>
 {% csrf_token %}
 
-<!-- ================= INFOS REQUÊTE ================= -->
+<!-- ================= NOM ================= -->
 <div class="mb-3">
-    <label class="form-label fw-semibold">Nom de la requête</label>
+    <label class="form-label fw-semibold">
+        Nom de la requête
+    </label>
     {{ form.name }}
     {% if form.name.errors %}
-        <div class="text-danger small">{{ form.name.errors|striptags }}</div>
+        <div class="text-danger small">
+            {{ form.name.errors|striptags }}
+        </div>
     {% endif %}
 </div>
 
+<!-- ================= SQL ================= -->
 <div class="mb-3">
-    <label class="form-label fw-semibold">Requête SQL</label>
+    <label class="form-label fw-semibold">
+        Requête SQL
+    </label>
     {{ form.sql_text }}
     {% if form.sql_text.errors %}
-        <div class="text-danger small">{{ form.sql_text.errors|striptags }}</div>
+        <div class="text-danger small">
+            {{ form.sql_text.errors|striptags }}
+        </div>
     {% endif %}
 </div>
-
-<div class="mb-3">
-    <label class="form-label fw-semibold">Objet de l’email</label>
-    {{ form.subject }}
-    {% if form.subject.errors %}
-        <div class="text-danger small">{{ form.subject.errors|striptags }}</div>
-    {% endif %}
-</div>
-
-<div class="mb-4">
-    <label class="form-label fw-semibold">Message</label>
-    {{ form.message }}
-    {% if form.message.errors %}
-        <div class="text-danger small">{{ form.message.errors|striptags }}</div>
-    {% endif %}
-</div>
-
-<!-- ================= PLANIFICATION ================= -->
-<hr>    
-
-<div class="mb-3">
-    <label class="form-label fw-semibold"><h5 class="fw-semibold mb-3">
-    <i class="bi bi-clock"></i> Planification
-</h5></label>
-    {{ form.execute_at }}
-    {% if form.execute_at.errors %}
-        <div class="text-danger small">{{ form.execute_at.errors|striptags }}</div>
-    {% endif %}
-    <small class="text-muted">
-        Obligatoire si la requête n’est pas périodique
-    </small>
-</div>
-
-<input type="hidden" name="client_timezone" id="client_timezone">
-
-<div class="form-check form-switch mb-3">
-    {{ form.is_periodic }}
-    <label class="form-check-label fw-semibold">
-        Requête périodique
-    </label>
-</div>
-
-<div class="row g-3 mb-4" id="periodic-block" style="display:none;">
-    <div class="col-md-4">
-        <label class="form-label fw-semibold">Type</label>
-        {{ form.periodic_type }}
-        {% if form.periodic_type.errors %}
-            <div class="text-danger small">{{ form.periodic_type.errors|striptags }}</div>
-        {% endif %}
-    </div>
-
-    <div class="col-md-4" id="weekly-only" style="display:none;">
-        <label class="form-label fw-semibold">Jour de la semaine</label>
-        {{ form.periodic_weekday }}
-        {% if form.periodic_weekday.errors %}
-            <div class="text-danger small">{{ form.periodic_weekday.errors|striptags }}</div>
-        {% endif %}
-    </div>
-
-    <div class="col-md-4" id="monthly-only" style="display:none;">
-        <label class="form-label fw-semibold">Jour du mois</label>
-        {{ form.periodic_monthday }}
-        {% if form.periodic_monthday.errors %}
-            <div class="text-danger small">{{ form.periodic_monthday.errors|striptags }}</div>
-        {% endif %}
-    </div>
-
-    <div class="col-md-4">
-        <label class="form-label fw-semibold">Heure</label>
-        {{ form.periodic_time }}
-        {% if form.periodic_time.errors %}
-            <div class="text-danger small">{{ form.periodic_time.errors|striptags }}</div>
-        {% endif %}
-    </div>
-</div>
-
-<!-- ================= DESTINATAIRES ================= -->
-<hr>
-<h5 class="fw-semibold mb-2">
-    <i class="bi bi-envelope"></i> Destinataires
-</h5>
-
-<div class="mb-2">
-    {{ form.emails }}
-    {% if form.emails.errors %}
-        <div class="text-danger small">{{ form.emails.errors|striptags }}</div>
-    {% endif %}
-    <small class="text-muted">
-        Maintenez <b>Ctrl</b> pour sélectionner plusieurs emails
-    </small>
-</div>
-
-<!-- ================= AJOUT EMAIL ================= -->
-<div class="input-group mt-3">
-    <input
-        id="new-email-input"
-        type="email"
-        class="form-control"
-        placeholder="Ajouter un nouvel email"
-    >
-    <button type="button" class="btn btn-primary" onclick="saveEmail()">
-        <i class="bi bi-plus-circle"></i>
-    </button>
-</div>
-<div class="text-danger small mt-1" id="new-email-error"></div>
 
 <!-- ================= BASE ================= -->
-<hr>
 <div class="mb-4">
-    <label class="form-label fw-semibold">Base de données</label>
+    <label class="form-label fw-semibold">
+        Base de données
+    </label>
     {{ form.database }}
     {% if form.database.errors %}
-        <div class="text-danger small">{{ form.database.errors|striptags }}</div>
+        <div class="text-danger small">
+            {{ form.database.errors|striptags }}
+        </div>
     {% endif %}
 </div>
 
-<!-- ================= SUBMIT ================= -->
-<button type="submit" class="btn btn-success w-100 py-2 fw-semibold">
-    <i class="bi bi-check-circle-fill"></i> Enregistrer
+<!-- ================= ACTION ================= -->
+<button type="submit" class="btn btn-success rounded-pill w-100 py-2 fw-semibold">
+    <i class="bi bi-check-circle-fill"></i>
+    Enregistrer
 </button>
 
 </form>
 </div>
 
-<!-- ================= JS ================= -->
-<script>
-// timezone
-document.getElementById("client_timezone").value =
-    Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-// date minimale (UX)
-const executeInput = document.getElementById("id_execute_at");
-if (executeInput) {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + 1);
-    executeInput.min = now.toISOString().slice(0, 16);
-}
-
-// périodique
-const periodicSwitch = document.getElementById("id_is_periodic");
-const periodicBlock = document.getElementById("periodic-block");
-const periodicType = document.getElementById("id_periodic_type");
-const weeklyOnly = document.getElementById("weekly-only");
-const monthlyOnly = document.getElementById("monthly-only");
-
-function togglePeriodic() {
-    periodicBlock.style.display = periodicSwitch.checked ? "flex" : "none";
-    if (executeInput) executeInput.disabled = periodicSwitch.checked;
-}
-togglePeriodic();
-periodicSwitch.addEventListener("change", togglePeriodic);
-
-periodicType.addEventListener("change", () => {
-    weeklyOnly.style.display = "none";
-    monthlyOnly.style.display = "none";
-    if (periodicType.value === "weekly") weeklyOnly.style.display = "block";
-    if (periodicType.value === "monthly") monthlyOnly.style.display = "block";
-});
-
-// ajout email
-function saveEmail() {
-    const input = document.getElementById("new-email-input");
-    const error = document.getElementById("new-email-error");
-    const email = input.value.trim();
-    error.textContent = "";
-
-    if (!email) {
-        error.textContent = "Veuillez saisir un email valide.";
-        return;
-    }
-
-    fetch("{% url 'save_email' %}", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": "{{ csrf_token }}"
-        },
-        body: JSON.stringify({ email })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === "success") {
-            location.reload();
-        } else {
-            error.textContent = data.message;
-        }
-    });
-}
-</script>
-
 <!-- ================= STYLE ================= -->
 <style>
-select[multiple] {
-    border-radius: .6rem;
+.card textarea {
+    min-height: 180px;
+    font-family: monospace;
 }
 .card input,
 .card textarea,
 .card select {
     border-radius: .5rem;
-}
-.text-danger {
-    color: #dc3545;
 }
 </style>
 

@@ -1,3 +1,5 @@
+import re
+from datetime import datetime, timedelta
 import mysql.connector
 import pandas as pd
 from django.core.mail import EmailMessage
@@ -21,32 +23,74 @@ def apply_user_date(sql_text, user_date):
 
 
 # =====================================================
+# 🔄 Remplacer {sysdate}, {sysdate-7}, {sysdate+30}
+# =====================================================
+def replace_sysdate(sql_text):
+    """
+    Remplace les expressions dynamiques :
+    {sysdate}
+    {sysdate-7}
+    {sysdate+30}
+
+    par des dates réelles au format YYYY-MM-DD
+    """
+
+    def _replace(match):
+        expression = match.group(1).lower().strip()
+        today = datetime.today()
+
+        # {sysdate}
+        if expression == "sysdate":
+            return f"'{today.strftime('%Y-%m-%d')}'"
+
+        # {sysdate-7} ou {sysdate+30}
+        m = re.match(r"sysdate([+-]\d+)", expression)
+        if m:
+            days = int(m.group(1))
+            new_date = today + timedelta(days=days)
+            return f"'{new_date.strftime('%Y-%m-%d')}'"
+
+        # inconnu → on laisse tel quel
+        return match.group(0)
+
+    return re.sub(r"\{([^}]+)\}", _replace, sql_text)
+
+
+# =====================================================
 # 🔥 Exécuter SQL sur base distante
 # =====================================================
 def execute_sql_on_remote(db, sql_text):
     """
     Exécute une requête SQL distante et retourne un DataFrame
+    (SELECT → DataFrame, autres → DataFrame vide)
     """
     try:
+        # 🔄 Appliquer les dates dynamiques AVANT exécution
+        sql_text = replace_sysdate(sql_text)
+
         conn = mysql.connector.connect(
             host=db.host,
             user=db.user,
             password=db.password or "",
             database=db.database_name,
-            port=db.port
+            port=int(db.port),
+            autocommit=True
         )
 
         cursor = conn.cursor()
         cursor.execute(sql_text)
 
-        rows = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
-
-        df = pd.DataFrame(rows, columns=columns)
+        # SELECT
+        if cursor.description:
+            rows = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
+            df = pd.DataFrame(rows, columns=columns)
+        else:
+            # INSERT / UPDATE / DELETE
+            df = pd.DataFrame()
 
         cursor.close()
         conn.close()
-
         return df
 
     except Exception as e:
@@ -62,34 +106,45 @@ def df_to_excel_bytes(df):
     Convertit un DataFrame en fichier Excel (bytes)
     """
     output = BytesIO()
-    df.to_excel(output, index=False, engine="openpyxl")
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Résultats")
+
     output.seek(0)
-    return output.read()
+    return output.getvalue()
 
 
 # =====================================================
-# 📧 Envoyer email avec pièce jointe Excel
+# 📧 Envoyer email avec PLUSIEURS pièces jointes
 # =====================================================
-def send_report_email(subject, body, to_emails, excel_bytes, filename):
+def send_report_email(
+    subject,
+    body,
+    to_emails,
+    attachments,
+    cc_emails=None
+):
     """
-    Envoie un email avec fichier Excel en pièce jointe
+    Envoie un email avec plusieurs fichiers en pièce jointe
     """
+
     if not to_emails:
-        print("⚠️ Aucun destinataire email.")
-        return
+        raise ValueError("Aucun destinataire TO défini.")
 
     email = EmailMessage(
         subject=subject,
         body=body,
         from_email="abdellahisidimedmemoud@gmail.com",
-        to=to_emails
+        to=to_emails,
+        cc=cc_emails or []
     )
 
-    email.attach(
-        filename,
-        excel_bytes,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    for file in attachments:
+        email.attach(
+            file["filename"],
+            file["content"],
+            file["mimetype"]
+        )
 
     email.send(fail_silently=False)
 
@@ -106,7 +161,7 @@ def test_mysql_connection(db):
         conn = pymysql.connect(
             host=db.host,
             user=db.user,
-            password=db.password,
+            password=db.password or "",
             database=db.database_name,
             port=int(db.port),
             connect_timeout=3

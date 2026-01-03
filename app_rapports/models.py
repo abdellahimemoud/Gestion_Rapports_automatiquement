@@ -19,7 +19,7 @@ class DatabaseConnection(models.Model):
 
 
 # =======================
-# EMAILS DESTINATAIRES
+# EMAILS
 # =======================
 class EmailContact(models.Model):
     email = models.EmailField(unique=True)
@@ -29,11 +29,27 @@ class EmailContact(models.Model):
 
 
 # =======================
-# REQUÊTE SQL PLANIFIÉE
+# REQUÊTE SQL
 # =======================
 class SqlQuery(models.Model):
+    name = models.CharField(max_length=200)
+    database = models.ForeignKey(
+        DatabaseConnection,
+        on_delete=models.CASCADE,
+        related_name="queries"
+    )
+    sql_text = models.TextField(verbose_name="Requête SQL")
+    created_at = models.DateTimeField(auto_now_add=True)
 
-    # 🔁 Types de périodicité
+    def __str__(self):
+        return self.name
+
+
+# =======================
+# RAPPORT
+# =======================
+class Report(models.Model):
+
     PERIODIC_TYPE_CHOICES = [
         ("daily", "Chaque jour"),
         ("weekly", "Chaque semaine"),
@@ -50,148 +66,124 @@ class SqlQuery(models.Model):
         ("sun", "Dimanche"),
     ]
 
-    # =======================
-    # INFOS GÉNÉRALES
-    # =======================
     name = models.CharField(max_length=200)
+    subject = models.CharField(max_length=255)
+    message = models.TextField(blank=True, null=True)
 
-    database = models.ForeignKey(
-        DatabaseConnection,
-        on_delete=models.CASCADE,
-        related_name="queries"
+    # 🔥 Plusieurs requêtes par rapport
+    queries = models.ManyToManyField(
+        SqlQuery,
+        related_name="reports"
     )
 
-    sql_text = models.TextField()
-
-    subject = models.CharField(
-        max_length=255,
-        verbose_name="Objet de l’email"
-    )
-
-    message = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name="Message"
-    )
-
-    emails = models.ManyToManyField(
+    to_emails = models.ManyToManyField(
         EmailContact,
-        blank=True,
-        related_name="queries"
+        related_name="reports_to"
     )
 
-    # =======================
-    # MODE NON RÉPÉTITIF
-    # =======================
-    execute_at = models.DateTimeField(
-        blank=True,
-        null=True,
-        verbose_name="Date et heure d'exécution"
+    cc_emails = models.ManyToManyField(
+        EmailContact,
+        related_name="reports_cc",
+        blank=True
     )
 
-    # =======================
-    # MODE RÉPÉTITIF
-    # =======================
-    is_periodic = models.BooleanField(
-        default=False,
-        verbose_name="Requête répétitive"
-    )
+    execute_at = models.DateTimeField(blank=True, null=True)
 
+    is_periodic = models.BooleanField(default=False)
     periodic_type = models.CharField(
         max_length=10,
         choices=PERIODIC_TYPE_CHOICES,
         blank=True,
-        null=True,
-        verbose_name="Type de périodicité"
+        null=True
     )
-
-    periodic_time = models.TimeField(
-        blank=True,
-        null=True,
-        verbose_name="Heure d'exécution"
-    )
-
+    periodic_time = models.TimeField(blank=True, null=True)
     periodic_weekday = models.CharField(
         max_length=3,
         choices=WEEKDAY_CHOICES,
         blank=True,
-        null=True,
-        verbose_name="Jour de la semaine"
+        null=True
     )
+    periodic_monthday = models.PositiveIntegerField(blank=True, null=True)
 
-    periodic_monthday = models.PositiveIntegerField(
-        blank=True,
-        null=True,
-        verbose_name="Jour du mois (1–31)"
-    )
-
-    # =======================
-    # STATUT / MÉTADONNÉES
-    # =======================
-    is_executed = models.BooleanField(
-        default=False,
-        verbose_name="Déjà exécutée"
-    )
-
+    last_executed_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
-    # =======================
-    # VALIDATION MÉTIER
-    # =======================
-    # def clean(self):
-
-    #     # 🔴 MODE PÉRIODIQUE
-    #     if self.is_periodic:
-    #         if self.execute_at:
-    #             raise ValidationError({
-    #                 "execute_at": "Impossible d’utiliser une date unique pour une requête répétitive."
-    #             })
-
-    #         if not self.periodic_type:
-    #             raise ValidationError({
-    #                 "periodic_type": ""
-    #             })
-
-    #         if not self.periodic_time:
-    #             raise ValidationError({
-    #                 "periodic_time": "Heure d’exécution obligatoire."
-    #             })
-
-    #         if self.periodic_type == "weekly" and not self.periodic_weekday:
-    #             raise ValidationError({
-    #                 "periodic_weekday": "Jour de la semaine obligatoire."
-    #             })
-
-    #         if self.periodic_type == "monthly":
-    #             if self.periodic_monthday is None:
-    #                 raise ValidationError({
-    #                     "periodic_monthday": "Jour du mois obligatoire."
-    #                 })
-    #             if not (1 <= self.periodic_monthday <= 31):
-    #                 raise ValidationError({
-    #                     "periodic_monthday": "Le jour du mois doit être entre 1 et 31."
-    #                 })
-
-    #     # 🔵 MODE UNIQUE
-    #     else:
-    #         if not self.execute_at:
-    #             raise ValidationError({
-    #                 "execute_at": ""
-    #             })
-
-    #         if self.execute_at <= timezone.now():
-    #             raise ValidationError({
-    #                 "execute_at": "La date et l’heure doivent être dans le futur."
-    #             })
-
-    #     super().clean()
-
-    # =======================
-    # UTILS
-    # =======================
-    def email_list(self):
-        return ", ".join(e.email for e in self.emails.all())
+    def clean(self):
+        """
+        Validation métier :
+        - Rapport périodique → type + heure obligatoires
+        - Rapport ponctuel → date future obligatoire
+        """
+        if self.is_periodic:
+            if not self.periodic_type or not self.periodic_time:
+                raise ValidationError("Planification périodique incomplète.")
+        else:
+            if self.execute_at and self.execute_at <= timezone.now():
+                raise ValidationError("La date d'exécution doit être dans le futur.")
 
     def __str__(self):
         return self.name
+
+
+# =======================
+# 🔥 FICHIERS GÉNÉRÉS PAR REQUÊTE
+# =======================
+class ReportFile(models.Model):
+    report = models.ForeignKey(
+        Report,
+        on_delete=models.CASCADE,
+        related_name="files"
+    )
+
+    query = models.ForeignKey(
+        SqlQuery,
+        on_delete=models.CASCADE,
+        related_name="generated_files"
+    )
+
+    file = models.FileField(upload_to="reports/")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.report.name} - {self.query.name}"
+
+
+# =======================
+# ✅ LOGS D’EXÉCUTION (GLOBAL + REQUÊTES)
+# =======================
+class ReportExecutionLog(models.Model):
+    STATUS_CHOICES = (
+        ("success", "Succès"),
+        ("error", "Erreur"),
+    )
+
+    report = models.ForeignKey(
+        Report,
+        on_delete=models.CASCADE,
+        related_name="logs"
+    )
+
+    # 🔥 NULL = log global (exécution ou email)
+    # NON NULL = log lié à une requête précise
+    query = models.ForeignKey(
+        SqlQuery,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="execution_logs"
+    )
+
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES
+    )
+
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        scope = self.query.name if self.query else "GLOBAL"
+        return f"{self.report.name} [{scope}] - {self.status}"

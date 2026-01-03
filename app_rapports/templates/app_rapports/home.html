@@ -2,73 +2,92 @@
 
 {% block content %}
 
-<!-- BACKGROUND AVEC IMAGE -->
 <style>
-    body {
-        /* background: url('https://www.bim-bank.mr/images/nous-caonnaitre-hero-image-2.png') no-repeat center center fixed; */
-        background-size: cover;
-    }
+/* ===== FOND GLOBAL ===== */
+body {
+    background: linear-gradient(135deg, #f4f6f9, #ffffff);
+}
 
-    /* Overlay sombre pour lisibilité */
-    .overlay {
-        background: rgba(247, 247, 247, 0.55);
-        padding: 80px 20px;
-        border-radius: 20px;
-    }
+/* ===== CONTENEUR PRINCIPAL ===== */
+.home-wrapper {
+    padding: 90px 20px;
+}
 
-    .title-main {
-        font-size: 2.6rem;
-        font-weight: 700;
-        color: #000000;
-    }   
+.home-card {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 70px 40px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.08);
+}
 
-    .subtitle-main {
-        font-size: 1.2rem;
-        color: #000000;
-    }
+/* ===== TITRES ===== */
+.title-main {
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: #1f2937;
+}
 
-    .btn-home {
-        padding: 12px 30px;
-        font-size: 1rem;
-        border-radius: 30px;
-        font-weight: 600;
-    }
+.subtitle-main {
+    font-size: 1.15rem;
+    color: #4b5563;
+    max-width: 720px;
+    margin: 0 auto;
+}
 
-    .btn-home i {
-        font-size: 1.2rem;
-    }
+/* ===== BOUTONS ===== */
+.btn-home {
+    padding: 14px 34px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 40px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    transition: all 0.25s ease;
+}
 
+.btn-home i {
+    font-size: 1.3rem;
+}
+
+.btn-home:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.18);
+}
 </style>
 
-
-<div class="d-flex justify-content-center mt-5">
-    <div class="overlay col-md-8 text-center shadow-lg">
+<div class="home-wrapper d-flex justify-content-center">
+    <div class="home-card col-md-9 text-center">
 
         <!-- TITRE -->
-        <h1 class="title-main mb-3 d-flex justify-content-center align-items-center gap-2">
-            <i class="bi bi-speedometer2"></i>
+        <h1 class="title-main mb-3 d-flex justify-content-center align-items-center gap-3">
+            <i class="bi bi-speedometer2 text-primary"></i>
             Tableau de bord des Rapports
         </h1>
 
         <!-- SOUS-TITRE -->
-        <p class="subtitle-main mb-4">
-            Gérez facilement vos bases de données et vos requêtes SQL automatisées.
+        <p class="subtitle-main mb-5">
+            Gérez vos connexions aux bases de données, créez des requêtes SQL
+            et automatisez l’envoi de rapports de manière centralisée.
         </p>
 
         <!-- BOUTONS -->
-        <div class="d-flex justify-content-center gap-3 mt-4">
-
-            <a href="{% url 'db_list' %}"
-               class="btn btn-primary btn-home shadow d-flex align-items-center gap-2">
+        <div class="d-flex justify-content-center flex-wrap gap-4 mt-4">
+            <a href="{% url 'report_list' %}" class="btn btn-primary btn-home ">
+                <i class="bi bi-file-earmark-bar-graph me-1"></i>
+                Rapports
+            </a>
+            <a href="{% url 'query_list' %}" class="btn btn-success btn-home">
+                <i class="bi bi-file-earmark-code-fill"></i>
+                Requêtes SQL
+            </a>            
+            <a href="{% url 'db_list' %}" class="btn btn-warning btn-home">
                 <i class="bi bi-hdd-network"></i>
                 Bases de données
             </a>
 
-            <a href="{% url 'query_list' %}"
-               class="btn btn-success btn-home shadow d-flex align-items-center gap-2">
-                <i class="bi bi-file-earmark-code-fill"></i>
-                Requêtes SQL
-            </a>
+
 
         </div>
     </div>

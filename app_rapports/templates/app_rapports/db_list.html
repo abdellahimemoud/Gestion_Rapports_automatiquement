@@ -39,8 +39,9 @@
                         <td>{{ db.database_name }}</td>
 
                         <td id="status-{{ db.id }}" class="text-center">
-                            <button class="btn btn-outline-primary btn-sm rounded-pill shadow-sm px-3 d-flex align-items-center gap-1 mx-auto"
-                                    onclick="testConnexion('{{ db.id }}')">
+                            <button
+                                class="btn btn-primary btn-sm rounded-pill shadow-sm px-3 d-flex align-items-center gap-1 mx-auto"
+                                onclick="testConnexion('{{ db.id }}')">
                                 <i class="bi bi-play-circle"></i> Tester
                             </button>
                         </td>
@@ -64,14 +65,15 @@
 <!-- Test Script -->
 <script>
 function testConnexion(id) {
-    let status = document.getElementById(`status-${id}`);
+    const status = document.getElementById(`status-${id}`);
+
     status.innerHTML = `
         <span class="badge bg-warning text-dark rounded-pill px-3 py-2">
             <i class="bi bi-hourglass-split"></i> Test...
         </span>
     `;
 
-    fetch(`/db/test/${id}/`)
+    fetch(`/databases/test/${id}/`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
