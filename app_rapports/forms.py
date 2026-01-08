@@ -11,55 +11,63 @@ from .models import (
 # ============================================================
 # FORMULAIRE CONNEXION BASE DE DONNÉES
 # ============================================================
+
 class DatabaseForm(forms.ModelForm):
     class Meta:
         model = DatabaseConnection
         fields = "__all__"
+
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
+
+            "db_type": forms.Select(attrs={"class": "form-select"}),
+
             "host": forms.TextInput(attrs={"class": "form-control"}),
+
             "port": forms.NumberInput(attrs={"class": "form-control"}),
+
             "user": forms.TextInput(attrs={"class": "form-control"}),
-            "password": forms.PasswordInput(attrs={"class": "form-control"}),
+ 
+            "password": forms.PasswordInput(
+                attrs={"class": "form-control"},
+                render_value=True
+            ),
+
             "database_name": forms.TextInput(attrs={"class": "form-control"}),
         }
 
 
 # ============================================================
 # FORMULAIRE REQUÊTE SQL (SIMPLE)
-# ============================================================
-class QueryForm(forms.ModelForm):
-    # Champ ManyToMany pour emails
-    emails = forms.ModelMultipleChoiceField(
-        queryset=EmailContact.objects.all(),
-        required=False,
-        widget=forms.CheckboxSelectMultiple,
-        label="Destinataires emails"
-    )
+# ===========================================================
 
+class QueryForm(forms.ModelForm):
     class Meta:
         model = SqlQuery
-        fields = ["name", "database", "sql_text", "emails"]
+        fields = ["name", "database", "sql_text"]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "database": forms.Select(attrs={"class": "form-select"}),
             "sql_text": forms.Textarea(attrs={"class": "form-control", "rows": 6}),
         }
 
-
 # ============================================================
 # FORMULAIRE RAPPORT
 # (requêtes + emails + planification)
 # ============================================================
 class ReportForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["queries"].queryset = SqlQuery.objects.all().order_by("name")
 
     # Requêtes associées
     queries = forms.ModelMultipleChoiceField(
-        queryset=SqlQuery.objects.all(),
+        queryset=SqlQuery.objects.all().order_by("name"),
         widget=forms.SelectMultiple(attrs={"class": "form-select", "size": "6"}),
         required=True,
         label="Requêtes SQL"
     )
+
 
     # Emails TO
     to_emails = forms.ModelMultipleChoiceField(

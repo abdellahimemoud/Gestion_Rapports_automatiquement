@@ -30,6 +30,9 @@ from django_celery_beat.models import (
     ClockedSchedule,
 )
 
+import pymysql
+import psycopg2
+import cx_Oracle
 
 # ==========================================================
 # ACCUEIL
@@ -60,19 +63,63 @@ def db_create(request):
 
 def test_db_connection(request, db_id):
     db = get_object_or_404(DatabaseConnection, id=db_id)
+
     try:
-        conn = pymysql.connect(
-            host=db.host,
-            user=db.user,
-            password=db.password or "",
-            database=db.database_name,
-            port=int(db.port),
-            connect_timeout=3,
-        )
+        # ======================
+        # MYSQL
+        # ======================
+        if db.db_type == "mysql":
+            conn = pymysql.connect(
+                host=db.host,
+                user=db.user,
+                password=db.password or "",
+                database=db.database_name,
+                port=int(db.port),
+                connect_timeout=3,
+            )
+
+        # ======================
+        # POSTGRESQL
+        # ======================
+        elif db.db_type == "postgres":
+            conn = psycopg2.connect(
+                host=db.host,
+                user=db.user,
+                password=db.password or "",
+                dbname=db.database_name,
+                port=int(db.port),
+                connect_timeout=3,
+            )
+
+        # ======================
+        # ORACLE (SERVICE_NAME)
+        # ======================
+        elif db.db_type == "oracle":
+            dsn = cx_Oracle.makedsn(
+                db.host,
+                int(db.port),
+                service_name=db.database_name,  # 🔥 SERVICE_NAME
+            )
+
+            conn = cx_Oracle.connect(
+                user=db.user,
+                password=db.password or "",
+                dsn=dsn,
+                encoding="UTF-8",
+            )
+
+        else:
+            return JsonResponse({"success": False})
+
         conn.close()
         return JsonResponse({"success": True})
-    except Exception:
-        return JsonResponse({"success": False})
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)  # utile en debug
+        })
+
 
 
 # ==========================================================
@@ -138,12 +185,18 @@ def query_download(request, qid):
 # RAPPORTS
 # ==========================================================
 def report_list(request):
-    return render(
-        request,
-        "app_rapports/report_list.html",
-        {"reports": Report.objects.all().order_by("-created_at")},
-    )
+    q = request.GET.get("q", "").strip()
 
+    reports = Report.objects.all().order_by("-created_at")
+
+    if q:
+        reports = reports.filter(code__icontains=q)
+
+    context = {
+        "reports": reports,
+        "q": q,
+    }
+    return render(request, "app_rapports/report_list.html", context)
 
 def report_detail(request, rid):
     report = get_object_or_404(Report, id=rid)

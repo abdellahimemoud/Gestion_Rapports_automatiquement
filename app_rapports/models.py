@@ -1,21 +1,46 @@
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-
+from django.utils.timezone import now
 
 # =======================
 # CONNEXION BASE DE DONNÉES
 # =======================
 class DatabaseConnection(models.Model):
+
+    DB_TYPES = [
+        ('oracle', 'Oracle'),
+        ('mysql', 'MySQL'),
+        ('postgres', 'PostgreSQL'),
+    ]
+
     name = models.CharField(max_length=200)
+
+    db_type = models.CharField(
+        max_length=20,
+        choices=DB_TYPES,
+        default='oracle'
+    )
+
     host = models.CharField(max_length=200)
-    port = models.PositiveIntegerField(default=3306)
+
+    port = models.PositiveIntegerField(default=1521)
+
     user = models.CharField(max_length=200)
-    password = models.CharField(max_length=200, blank=True, null=True)
-    database_name = models.CharField(max_length=200)
+
+    password = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True
+    )
+
+    database_name = models.CharField(
+        max_length=200,
+        help_text="MySQL/Postgres: DB name | Oracle: SERVICE_NAME (ex: ORCLPDB1)"
+    )
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.db_type})"
 
 
 # =======================
@@ -66,6 +91,14 @@ class Report(models.Model):
         ("sun", "Dimanche"),
     ]
 
+    # 🔑 CODE UNIQUE DU RAPPORT
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        blank=True,
+        null=True  
+    )
+
     name = models.CharField(max_length=200)
     subject = models.CharField(max_length=255)
     message = models.TextField(blank=True, null=True)
@@ -107,6 +140,24 @@ class Report(models.Model):
 
     last_executed_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # =======================
+    # GÉNÉRATION DU CODE
+    # =======================
+    def save(self, *args, **kwargs):
+        if not self.code:
+            self.code = self.generate_code()
+        super().save(*args, **kwargs)
+
+    def generate_code(self):
+        year = now().year
+        last = Report.objects.filter(
+            created_at__year=year
+        ).count() + 1
+        return f"R-{last:02d}"
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
 
     def clean(self):
         """

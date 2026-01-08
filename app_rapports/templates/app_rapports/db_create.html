@@ -30,6 +30,14 @@
                 <div class="text-danger small">{{ form.name.errors.0 }}</div>
             {% endif %}
         </div>
+        <!-- Type de base -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Type de base de données</label>
+            {{ form.db_type }}
+            {% if form.db_type.errors %}
+                <div class="text-danger small">{{ form.db_type.errors.0 }}</div>
+            {% endif %}
+        </div>
 
         <!-- Hôte -->
         <div class="mb-3">
@@ -82,5 +90,34 @@
 
     </form>
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const dbTypeField = document.getElementById("id_db_type");
+    const portField = document.getElementById("id_port");
+
+    if (!dbTypeField || !portField) return;
+
+    const defaultPorts = {
+        mysql: 3306,
+        postgres: 5432,
+        oracle: 1521
+    };
+
+    function updatePort() {
+        const selectedType = dbTypeField.value;
+
+        if (defaultPorts[selectedType]) {
+            portField.value = defaultPorts[selectedType];
+        }
+    }
+
+    // 🔄 Changement manuel
+    dbTypeField.addEventListener("change", updatePort);
+
+    // 🚀 Initialisation au chargement
+    updatePort();
+});
+</script>
 
 {% endblock %}

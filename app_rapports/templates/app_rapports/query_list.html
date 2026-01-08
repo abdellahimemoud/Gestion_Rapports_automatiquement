@@ -8,6 +8,11 @@
         <i class="bi bi-database text-primary"></i>
         Liste des requêtes SQL
     </h2>
+    <!-- Recherche -->
+    <input type="text"
+       id="searchInput"
+       class="form-control form-control-sm rounded-pill mb-3"
+       placeholder="🔍 Rechercher par nom">
 
     <a href="{% url 'query_create' %}" class="btn btn-primary rounded-pill px-4 shadow-sm">
         <i class="bi bi-plus-circle"></i>
@@ -53,5 +58,43 @@
     </div>
 
 </div>
+<!-- Script recherche et tri -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.getElementById("searchInput");
+    const tableRows = document.querySelectorAll("table tbody tr");
 
+    // Filtrage automatique
+    searchInput.addEventListener("input", function () {
+        const filter = this.value.toLowerCase();
+        tableRows.forEach(row => {
+            const nameCell = row.querySelector("td:nth-child(1)");
+            if (!nameCell) return;
+            const textName = nameCell.textContent.toLowerCase();
+            row.style.display = textName.includes(filter) ? "" : "none";
+        });
+    });
+
+    // Tri par nom au chargement
+    const tbody = document.querySelector("table tbody");
+    const rowsArray = Array.from(tableRows);
+
+    rowsArray.sort((a, b) => {
+        const nameA = a.querySelector("td:nth-child(1)").textContent.trim().toLowerCase();
+        const nameB = b.querySelector("td:nth-child(1)").textContent.trim().toLowerCase();
+        return nameA.localeCompare(nameB);
+    });
+
+    rowsArray.forEach(row => tbody.appendChild(row));
+});
+</script>
+
+<style>
+#searchInput {
+    width: 400px;        /* largeur fixe */
+    padding: 0.25rem 0.75rem; /* réduit padding haut/bas */
+    border-radius: 100px; /* arrondi complet */
+    font-size: 0.85rem;  /* texte plus petit */
+}
+</style>
 {% endblock %}

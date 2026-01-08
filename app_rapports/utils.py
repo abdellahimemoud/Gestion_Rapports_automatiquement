@@ -5,6 +5,8 @@ import pandas as pd
 from django.core.mail import EmailMessage
 from io import BytesIO
 import pymysql
+import oracledb
+import psycopg2
 
 
 # =====================================================
@@ -57,25 +59,57 @@ def replace_sysdate(sql_text):
 
 
 # =====================================================
-# 🔥 Exécuter SQL sur base distante
+# 🔥 Exécuter SQL sur base distante (MySQL / Oracle / PostgreSQL)
 # =====================================================
 def execute_sql_on_remote(db, sql_text):
     """
-    Exécute une requête SQL distante et retourne un DataFrame
-    (SELECT → DataFrame, autres → DataFrame vide)
+    Exécute une requête SQL distante selon le type de base
+    Retourne un DataFrame pandas
     """
+
     try:
-        # 🔄 Appliquer les dates dynamiques AVANT exécution
+        # 🔄 Remplacement des dates dynamiques
         sql_text = replace_sysdate(sql_text)
 
-        conn = mysql.connector.connect(
-            host=db.host,
-            user=db.user,
-            password=db.password or "",
-            database=db.database_name,
-            port=int(db.port),
-            autocommit=True
-        )
+        # ======================
+        # MySQL
+        # ======================
+        if db.db_type == "mysql":
+            conn = mysql.connector.connect(
+                host=db.host,
+                user=db.user,
+                password=db.password or "",
+                database=db.database_name,
+                port=int(db.port),
+                autocommit=True
+            )
+
+        # ======================
+        # Oracle
+        # ======================
+        elif db.db_type == "oracle":
+            conn = oracledb.connect(
+                user=db.user,
+                password=db.password or "",
+                host=db.host,
+                port=int(db.port),
+                service_name=db.database_name
+    )
+
+        # ======================
+        # PostgreSQL
+        # ======================
+        elif db.db_type == "postgres":
+            conn = psycopg2.connect(
+                host=db.host,
+                user=db.user,
+                password=db.password or "",
+                dbname=db.database_name,
+                port=int(db.port)
+            )
+
+        else:
+            raise ValueError("Type de base non supporté")
 
         cursor = conn.cursor()
         cursor.execute(sql_text)
@@ -86,7 +120,6 @@ def execute_sql_on_remote(db, sql_text):
             columns = [col[0] for col in cursor.description]
             df = pd.DataFrame(rows, columns=columns)
         else:
-            # INSERT / UPDATE / DELETE
             df = pd.DataFrame()
 
         cursor.close()
@@ -94,9 +127,8 @@ def execute_sql_on_remote(db, sql_text):
         return df
 
     except Exception as e:
-        print("❌ Erreur exécution SQL :", e)
+        print(f"❌ Erreur SQL ({db.db_type}) :", e)
         return pd.DataFrame()
-
 
 # =====================================================
 # 📄 Convertir DataFrame → Excel (bytes)
@@ -150,25 +182,51 @@ def send_report_email(
 
 
 # =====================================================
-# 🔎 Tester la connexion MySQL
+# 🔎 Tester la connexion (toutes bases)
 # =====================================================
-def test_mysql_connection(db):
+def test_database_connection(db):
     """
-    Teste la connexion MySQL
-    db = instance DatabaseConnection
+    Teste la connexion selon le type de base
     """
+
     try:
-        conn = pymysql.connect(
-            host=db.host,
-            user=db.user,
-            password=db.password or "",
-            database=db.database_name,
-            port=int(db.port),
-            connect_timeout=3
-        )
+        if db.db_type == "mysql":
+            conn = pymysql.connect(
+                host=db.host,
+                user=db.user,
+                password=db.password or "",
+                database=db.database_name,
+                port=int(db.port),
+                connect_timeout=3
+            )
+
+        elif db.db_type == "oracle":
+             conn = oracledb.connect(
+                user=db.user,
+                password=db.password or "",
+                host=db.host,
+                port=int(db.port),
+                service_name=db.database_name
+    )
+
+
+        elif db.db_type == "postgres":
+            conn = psycopg2.connect(
+                host=db.host,
+                user=db.user,
+                password=db.password or "",
+                dbname=db.database_name,
+                port=int(db.port),
+                connect_timeout=3
+            )
+
+        else:
+            return False
+
         conn.close()
         return True
 
     except Exception as e:
-        print("❌ Erreur connexion MySQL :", e)
+        print(f"❌ Erreur connexion ({db.db_type}) :", e)
         return False
+

@@ -8,6 +8,13 @@
         <i class="bi bi-file-earmark-text text-primary"></i>
         Liste des rapports
     </h2>
+       
+    <!-- Rechercher -->
+       <input type="text"
+       id="searchInput"
+       class="form-control form-control-sm rounded-pill mb-3"
+       placeholder="🔍 Rechercher par code ou nom">
+    
 
     <a href="{% url 'report_create' %}"
        class="btn btn-primary rounded-pill px-4 shadow-sm">
@@ -23,6 +30,7 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light border-bottom">
                 <tr>
+                    <th class="fw-semibold">Code</th>
                     <th class="fw-semibold ">Nom du rapport</th>
                     <th class="fw-semibold ">Requêtes associées</th>
                     <th class="fw-semibold  text-center">Actions</th>
@@ -32,9 +40,13 @@
             <tbody>
             {% for report in reports %}
                 <tr>
+                      <!-- CODE -->
+                    <td class="fw-semibold text-dark">
+                        {{ report.code }}
+                    </td>
                     <!-- Nom -->
                     <td class="fw-semibold text-dark">
-                        <i class="bi bi-file-earmark-text text-primary me-2"></i>
+                        <i class="bi bi-file-earmark-text text-dark me-2"></i>
                         {{ report.name }}
                     </td>
 
@@ -95,5 +107,48 @@
     </div>
 
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.getElementById("searchInput");
+    const tableRows = document.querySelectorAll("table tbody tr");
+
+    // Filtrage en temps réel
+    searchInput.addEventListener("input", function () {
+        const filter = this.value.toLowerCase();
+
+        tableRows.forEach(row => {
+            const codeCell = row.querySelector("td:nth-child(1)");
+            const nameCell = row.querySelector("td:nth-child(2)"); // colonne Nom
+            if (!codeCell || !nameCell) return;
+
+            const textCode = codeCell.textContent.toLowerCase();
+            const textName = nameCell.textContent.toLowerCase();
+
+            row.style.display = (textCode.includes(filter) || textName.includes(filter)) ? "" : "none";
+        });
+    });
+
+    // Tri par code au chargement
+    const tbody = document.querySelector("table tbody");
+    const rowsArray = Array.from(tableRows);
+
+    rowsArray.sort((a, b) => {
+        const codeA = a.querySelector("td:nth-child(1)").textContent.trim().toLowerCase();
+        const codeB = b.querySelector("td:nth-child(1)").textContent.trim().toLowerCase();
+        return codeA.localeCompare(codeB, undefined, {numeric: true});
+    });
+
+    rowsArray.forEach(row => tbody.appendChild(row));
+});
+</script>
+
+<style>
+#searchInput {
+    width: 400px;        /* largeur fixe */
+    padding: 0.25rem 0.75rem; /* réduit padding haut/bas */
+    border-radius: 100px; /* arrondi complet */
+    font-size: 0.85rem;  /* texte plus petit */
+}
+</style>
 
 {% endblock %}

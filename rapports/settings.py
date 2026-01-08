@@ -79,21 +79,17 @@ WSGI_APPLICATION = 'rapports.wsgi.application'
 
 
 # ===========================
-# DATABASE (MySQL - XAMPP)
+# DATABASE
 # ===========================
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'rapports',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
-        }
+        'ENGINE': 'django.db.backends.oracle',
+        'NAME': '127.0.0.1:1521/FREEPDB1',
+        'USER': 'rapports',
+        'PASSWORD': 'rapports123',
     }
 }
+
 
 
 # ===========================
@@ -104,7 +100,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'abdellahisidimedmemoud@gmail.com'
-EMAIL_HOST_PASSWORD = 'ghgv ujcf eovu ncqy'  # ⚠️ à mettre dans .env en prod
+EMAIL_HOST_PASSWORD = 'ghgv ujcf eovu ncqy' 
 
 
 # ===========================

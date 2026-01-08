@@ -23,6 +23,7 @@
                 <thead class="table-light">
                     <tr>
                         <th class="py-3 px-4">Nom</th>
+                        <th class="py-3">Type</th>
                         <th class="py-3">Hôte</th>
                         <th class="py-3">Port</th>
                         <th class="py-3">Base</th>
@@ -34,6 +35,21 @@
                     {% for db in dbs %}
                     <tr class="hover-row">
                         <td class="fw-semibold px-4">{{ db.name }}</td>
+                            <td>
+                                 {% if db.db_type == "mysql" %}
+                                  <span class="badge bg-info rounded-pill">
+                                   <i class="bi bi-database"></i> MySQL
+                                 </span>
+                                 {% elif db.db_type == "oracle" %}
+                                 <span class="badge bg-danger rounded-pill">
+                                  <i class="bi bi-hdd-stack"></i> Oracle
+                                 </span>
+                                {% elif db.db_type == "postgres" %}
+                                 <span class="badge bg-primary rounded-pill">
+                                <i class="bi bi-server"></i> PostgreSQL
+                                 </span>
+                                {% endif %}
+                        </td>
                         <td>{{ db.host }}</td>
                         <td>{{ db.port }}</td>
                         <td>{{ db.database_name }}</td>
