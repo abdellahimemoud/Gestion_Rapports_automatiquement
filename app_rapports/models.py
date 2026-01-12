@@ -1,7 +1,9 @@
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-from django.utils.timezone import now
+from django.db import transaction
+from django.db.models import Max
+
 
 # =======================
 # CONNEXION BASE DE DONNÉES
@@ -23,9 +25,7 @@ class DatabaseConnection(models.Model):
     )
 
     host = models.CharField(max_length=200)
-
     port = models.PositiveIntegerField(default=1521)
-
     user = models.CharField(max_length=200)
 
     password = models.CharField(
@@ -36,7 +36,7 @@ class DatabaseConnection(models.Model):
 
     database_name = models.CharField(
         max_length=200,
-        help_text="MySQL/Postgres: DB name | Oracle: SERVICE_NAME (ex: ORCLPDB1)"
+        help_text="MySQL/Postgres: DB name | Oracle: SERVICE_NAME (ex: FREEPDB1)"
     )
 
     def __str__(self):
@@ -58,11 +58,13 @@ class EmailContact(models.Model):
 # =======================
 class SqlQuery(models.Model):
     name = models.CharField(max_length=200)
+
     database = models.ForeignKey(
         DatabaseConnection,
         on_delete=models.CASCADE,
         related_name="queries"
     )
+
     sql_text = models.TextField(verbose_name="Requête SQL")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -93,10 +95,10 @@ class Report(models.Model):
 
     # 🔑 CODE UNIQUE DU RAPPORT
     code = models.CharField(
-        max_length=50,
+        max_length=10,
         unique=True,
         blank=True,
-        null=True  
+        null=True
     )
 
     name = models.CharField(max_length=200)
@@ -145,19 +147,28 @@ class Report(models.Model):
     # GÉNÉRATION DU CODE
     # =======================
     def save(self, *args, **kwargs):
-        if not self.code:
+        if not self.code or self.code.strip() == "":
             self.code = self.generate_code()
         super().save(*args, **kwargs)
 
     def generate_code(self):
-        year = now().year
-        last = Report.objects.filter(
-            created_at__year=year
-        ).count() + 1
-        return f"R-{last:02d}"
+        """
+        Génère un code unique du type R-01, R-02, R-03...
+        Fonctionne même si des rapports sont supprimés.
+        """
+        with transaction.atomic():
+            last_code = (
+                Report.objects
+                .filter(code__startswith="R-")
+                .aggregate(max_code=Max("code"))
+                ["max_code"]
+            )
 
-    def __str__(self):
-        return f"{self.code} - {self.name}"
+            if not last_code:
+                return "R-01"
+
+            last_number = int(last_code.split("-")[1])
+            return f"R-{last_number + 1:02d}"
 
     def clean(self):
         """
@@ -173,34 +184,12 @@ class Report(models.Model):
                 raise ValidationError("La date d'exécution doit être dans le futur.")
 
     def __str__(self):
-        return self.name
+        return f"{self.code} - {self.name}"
 
-
-# =======================
-# 🔥 FICHIERS GÉNÉRÉS PAR REQUÊTE
-# =======================
-class ReportFile(models.Model):
-    report = models.ForeignKey(
-        Report,
-        on_delete=models.CASCADE,
-        related_name="files"
-    )
-
-    query = models.ForeignKey(
-        SqlQuery,
-        on_delete=models.CASCADE,
-        related_name="generated_files"
-    )
-
-    file = models.FileField(upload_to="reports/")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.report.name} - {self.query.name}"
 
 
 # =======================
-# ✅ LOGS D’EXÉCUTION (GLOBAL + REQUÊTES)
+# LOGS D’EXÉCUTION
 # =======================
 class ReportExecutionLog(models.Model):
     STATUS_CHOICES = (
@@ -214,8 +203,7 @@ class ReportExecutionLog(models.Model):
         related_name="logs"
     )
 
-    # 🔥 NULL = log global (exécution ou email)
-    # NON NULL = log lié à une requête précise
+    # 🔥 NULL = log global
     query = models.ForeignKey(
         SqlQuery,
         on_delete=models.SET_NULL,
@@ -238,3 +226,29 @@ class ReportExecutionLog(models.Model):
     def __str__(self):
         scope = self.query.name if self.query else "GLOBAL"
         return f"{self.report.name} [{scope}] - {self.status}"
+
+
+# =======================
+# ✅ PARAMÈTRES SQL PAR RAPPORT / REQUÊTE
+# =======================
+class ReportQueryParameter(models.Model):
+    report = models.ForeignKey(
+        Report,
+        on_delete=models.CASCADE,
+        related_name="query_parameters"
+    )
+
+    query = models.ForeignKey(
+        SqlQuery,
+        on_delete=models.CASCADE,
+        related_name="report_parameters"
+    )
+
+    name = models.CharField(max_length=100)
+    value = models.CharField(max_length=255)
+
+    class Meta:
+        unique_together = ("report", "query", "name")
+
+    def __str__(self):
+        return f"{self.report.name} - {self.query.name} : {self.name}"

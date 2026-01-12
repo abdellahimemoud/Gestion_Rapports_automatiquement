@@ -10,7 +10,7 @@
     </h2>
        
     <!-- Rechercher -->
-       <input type="text"
+    <input type="text"
        id="searchInput"
        class="form-control form-control-sm rounded-pill mb-3"
        placeholder="🔍 Rechercher par code ou nom">
@@ -19,7 +19,7 @@
     <a href="{% url 'report_create' %}"
        class="btn btn-primary rounded-pill px-4 shadow-sm">
         <i class="bi bi-plus-circle"></i>
-        Nouveau rapport
+        Ajouter rapport
     </a>
 </div>
 
@@ -68,13 +68,30 @@
                     <!-- Actions -->
                     <td class="text-center">
                         <div class="d-flex justify-content-center gap-2 flex-wrap">
-                            <a href="{% url 'report_detail' report.id %}"
-                               class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
-                                <i class="bi bi-eye-fill"></i>
-                                 Voir
+                               <!-- ✏️ Modifier -->
+                            <a href="{% url 'report_update' report.id %}"
+                             class="btn btn-warning btn-sm rounded-pill px-3 shadow-sm">
+                               <i class="bi bi-pencil-square"></i> 
+                            </a>
+
+                                    <!-- 🗑 Supprimer -->
+                            <form action="{% url 'report_delete' report.id %}"
+                                  method="post"
+                                  onsubmit="return confirm('⚠ Voulez-vous vraiment supprimer ce rapport ?');">
+                                 {% csrf_token %}
+                                <button type="submit"
+                                      class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm">
+                                     <i class="bi bi-trash-fill"></i> 
+                                 </button>
+                            </form>
+
+                            <a href="{% url 'report_download' report.id %}"
+                               class="btn btn-secondary btn-sm rounded-pill px-3 shadow-sm">
+                                <i class="bi bi-file-earmark-arrow-down-fill"></i>
+                                 <!-- Télécharger -->
                             </a>
                             <a href="{% url 'report_logs' report.id %}"
-                             class="btn btn-warning btn-sm rounded-pill px-3 shadow-sm">
+                             class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
                                <i class="bi bi-clock-history"></i>
                                 Logs
                             </a>
@@ -82,13 +99,7 @@
                             <a href="{% url 'report_execute' report.id %}"
                                class="btn btn-success btn-sm rounded-pill px-3 shadow-sm">
                                 <i class="bi bi-lightning-charge-fill"></i>
-                                Exécuter
-                            </a>
-
-                            <a href="{% url 'report_download' report.id %}"
-                               class="btn btn-secondary btn-sm rounded-pill px-3 shadow-sm">
-                                <i class="bi bi-file-earmark-arrow-down-fill"></i>
-                                 Télécharger
+                                    Exécuter
                             </a>
 
                         </div>

@@ -5,7 +5,6 @@ from .models import (
     EmailContact,
     Report,
     ReportExecutionLog,
-    ReportFile,
 )
 
 # ==============================
@@ -36,16 +35,6 @@ class SqlQueryAdmin(admin.ModelAdmin):
 class EmailContactAdmin(admin.ModelAdmin):
     list_display = ("email",)
     search_fields = ("email",)
-
-
-# ==============================
-# REPORT FILE (résultats générés)
-# ==============================
-@admin.register(ReportFile)
-class ReportFileAdmin(admin.ModelAdmin):
-    list_display = ("report", "query", "created_at")
-    list_filter = ("report", "query")
-    date_hierarchy = "created_at"
 
 
 # ==============================

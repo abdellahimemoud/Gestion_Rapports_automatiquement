@@ -62,23 +62,24 @@ body {
 
         <!-- TITRE -->
         <h1 class="title-main mb-3 d-flex justify-content-center align-items-center gap-3">
-            <i class="bi bi-speedometer2 text-primary"></i>
-            Tableau de bord des Rapports
+            <i class="bi bi-speedometer2 text-dark"></i>
+            Gestion des Rapports
         </h1>
 
         <!-- SOUS-TITRE -->
         <p class="subtitle-main mb-5">
-            Gérez vos connexions aux bases de données, créez des requêtes SQL
-            et automatisez l’envoi de rapports de manière centralisée.
+    Une plateforme centralisée pour gérer les connexions aux bases de données,
+    concevoir des requêtes SQL, planifier la génération des rapports
+    et automatiser leur diffusion selon un calendrier défini.
         </p>
 
         <!-- BOUTONS -->
         <div class="d-flex justify-content-center flex-wrap gap-4 mt-4">
-            <a href="{% url 'report_list' %}" class="btn btn-success btn-home ">
+            <a href="{% url 'report_list' %}" class="btn btn-primary btn-home ">
                 <i class="bi bi-file-earmark-bar-graph me-1"></i>
                 Rapports
             </a>
-            <a href="{% url 'query_list' %}" class="btn btn-primary btn-home">
+            <a href="{% url 'query_list' %}" class="btn btn-success btn-home">
                 <i class="bi bi-file-earmark-code-fill"></i>
                 Requêtes SQL
             </a>            

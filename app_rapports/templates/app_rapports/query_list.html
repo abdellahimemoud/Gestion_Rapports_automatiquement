@@ -16,7 +16,7 @@
 
     <a href="{% url 'query_create' %}" class="btn btn-primary rounded-pill px-4 shadow-sm">
         <i class="bi bi-plus-circle"></i>
-        Nouveau requête
+        Ajouter requête
     </a>
 </div>
 
@@ -29,6 +29,7 @@
                 <tr>
                     <th class="fw-semibold">Nom</th>
                     <th class="fw-semibold">Base de données</th>
+                    <th class="fw-semibold text-center">Actions</th>
                 </tr>
             </thead>
 
@@ -44,6 +45,26 @@
                         <i class="bi bi-database-check me-1"></i>
                         {{ query.database.name }}
                     </td>
+                            <!-- Actions -->
+                    <td class="text-center">
+                        <div class="d-flex justify-content-center gap-2">
+
+                          <!-- Modifier -->
+                          <a href="{% url 'query_update' query.id %}"
+                              class="btn btn-warning btn-sm rounded-pill px-3">
+                              <i class="bi bi-pencil-square"></i>
+                          </a>
+
+                         <!-- Supprimer -->
+                           <a href="{% url 'query_delete' query.id %}"
+                              class="btn btn-danger btn-sm rounded-pill px-3"
+                               onclick="return confirm('Voulez-vous vraiment supprimer cette requête ?');">
+                           <i class="bi bi-trash"></i>
+                           </a>
+
+                         </div>
+                    </td>
+
                 </tr>
             {% empty %}
                 <tr>

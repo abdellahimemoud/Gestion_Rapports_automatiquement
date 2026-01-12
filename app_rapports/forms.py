@@ -36,6 +36,49 @@ class DatabaseForm(forms.ModelForm):
             "database_name": forms.TextInput(attrs={"class": "form-control"}),
         }
 
+# modife base
+
+class DatabaseConnectionForm(forms.ModelForm):
+    class Meta:
+        model = DatabaseConnection
+        fields = [
+            "name",
+            "db_type",
+            "host",
+            "port",
+            "user",
+            "password",
+            "database_name",
+        ]
+
+        widgets = {
+            "name": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Nom de la connexion"
+            }),
+            "db_type": forms.Select(attrs={
+                "class": "form-select"
+            }),
+            "host": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "localhost"
+            }),
+            "port": forms.NumberInput(attrs={
+                "class": "form-control"
+            }),
+            "user": forms.TextInput(attrs={
+                "class": "form-control"
+            }),
+            "password": forms.PasswordInput(attrs={
+                  "class": "form-control",
+                   "id": "id_password"
+            }),
+
+            "database_name": forms.TextInput(attrs={
+                "class": "form-control"
+            }),
+        }
+
 
 # ============================================================
 # FORMULAIRE REQUÊTE SQL (SIMPLE)
@@ -49,6 +92,25 @@ class QueryForm(forms.ModelForm):
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "database": forms.Select(attrs={"class": "form-select"}),
             "sql_text": forms.Textarea(attrs={"class": "form-control", "rows": 6}),
+        }
+
+# modifie requete
+class SqlQueryForm(forms.ModelForm):
+    class Meta:
+        model = SqlQuery
+        fields = ["name", "sql_text", "database"]
+
+        widgets = {
+            "name": forms.TextInput(attrs={
+                "class": "form-control"
+            }),
+            "sql_text": forms.Textarea(attrs={
+                "class": "form-control",
+                "rows": 6
+            }),
+            "database": forms.Select(attrs={
+                "class": "form-select"
+            }),
         }
 
 # ============================================================

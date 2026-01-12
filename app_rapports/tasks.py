@@ -3,12 +3,17 @@ from django.utils import timezone
 from io import BytesIO
 import pandas as pd
 
-from .models import SqlQuery, Report, ReportExecutionLog
+from .models import (
+    SqlQuery,
+    Report,
+    ReportExecutionLog,
+    ReportQueryParameter,
+)
 from .utils import execute_sql_on_remote, send_report_email
 
 
 # =====================================================
-# 🔹 Exécution d'une requête SQL simple 
+# 🔹 Exécution d'une requête SQL simple (SANS paramètres)
 # =====================================================
 @shared_task(
     bind=True,
@@ -19,7 +24,10 @@ def execute_sql_query_task(self, query_id):
     query = SqlQuery.objects.get(id=query_id)
 
     try:
-        df = execute_sql_on_remote(query.database, query.sql_text)
+        df = execute_sql_on_remote(
+            query.database,
+            query.sql_text
+        )
 
         if df.empty:
             raise ValueError("La requête SQL n'a retourné aucune donnée.")
@@ -64,7 +72,7 @@ def execute_sql_query_task(self, query_id):
 
 
 # =====================================================
-# 🔹 Exécution d’un RAPPORT (PLUSIEURS REQUÊTES)
+# 🔹 Exécution d’un RAPPORT (PLUSIEURS REQUÊTES + PARAMÈTRES)
 # =====================================================
 @shared_task(
     bind=True,
@@ -100,7 +108,20 @@ def execute_report_task(self, report_id):
     # =================================================
     for query in report.queries.all():
         try:
-            df = execute_sql_on_remote(query.database, query.sql_text)
+            # ✅ PARAMÈTRES LIÉS AU RAPPORT + REQUÊTE
+            params = {
+                p.name: p.value
+                for p in ReportQueryParameter.objects.filter(
+                    report=report,
+                    query=query
+                )
+            }
+
+            df = execute_sql_on_remote(
+                query.database,
+                query.sql_text,
+                params
+            )
 
             if df.empty:
                 df = pd.DataFrame({
@@ -192,7 +213,7 @@ def execute_report_task(self, report_id):
     report.save(update_fields=["last_executed_at"])
 
     return (
-        f" Rapport '{report.name}' exécuté avec erreurs"
+        f"Rapport '{report.name}' exécuté avec erreurs"
         if has_error
-        else f" Rapport '{report.name}' exécuté avec succès"
+        else f"Rapport '{report.name}' exécuté avec succès"
     )

@@ -4,10 +4,16 @@
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
+
     <h2 class="fw-bold text-dark d-flex align-items-center gap-2">
         <i class="bi bi-file-earmark-text text-primary"></i>
-        Créer un rapport
+        {% if is_edit %}
+           Modifier le rapport
+        {% else %}
+          Créer un rapport
+        {% endif %}
     </h2>
+
     <!-- Bouton Retour -->
     <a href="{% url 'report_list' %}"
        class="btn btn-primary rounded-pill px-4 shadow-sm">
@@ -161,13 +167,22 @@
         Maintenez Ctrl pour sélectionner plusieurs emails
     </small>
 </div>
+<!-- ================= AJOUT EMAIL ================= -->
+<div class="input-group mb-4">
+    <input id="new-email-input" type="email" class="form-control"
+           placeholder="Ajouter un nouvel email">
+    <button type="button" class="btn btn-primary" onclick="saveEmail()">
+        <i class="bi bi-plus-circle"></i>
+    </button>
+</div>
+<div class="text-danger small" id="new-email-error"></div>
 
 <!-- ================= REQUÊTES ================= -->
 <hr>
 <h5 class="fw-semibold mb-2">
     <i class="bi bi-database"></i> Requêtes associées
 </h5>
-
+<br>
 <!-- 🔎 Champ de recherche -->
 <input type="text"
        id="querySearch"
@@ -186,10 +201,20 @@
     </small>
 </div>
 
+<h5 class="fw-semibold">
+    <i class="bi bi-sliders"></i> Paramètre de requête
+</h5>
+
+<div id="params-container"></div>
+<br>
+<br>
 <!-- ================= SUBMIT ================= -->
+
 <button type="submit" class="btn btn-success rounded-pill w-100 py-2 fw-semibold">
-    <i class="bi bi-check-circle-fill"></i> Enregistrer
+    <i class="bi bi-check-circle-fill"></i>
+    {% if is_edit %}Mettre à jour{% else %}Enregistrer{% endif %}
 </button>
+
 
 </form>
 </div>
@@ -250,6 +275,67 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 });
+
+// ajout email AJAX
+function saveEmail() {
+    const input = document.getElementById("new-email-input");
+    const error = document.getElementById("new-email-error");
+    const email = input.value.trim();
+    error.textContent = "";
+
+    if (!email) {
+        error.textContent = "Email invalide.";
+        return;
+    }
+
+    fetch("{% url 'save_email' %}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}"
+        },
+        body: JSON.stringify({ email })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === "success") location.reload();
+        else error.textContent = data.message;
+    });
+}
+
+
+// LES PARAMÈTRES
+document.getElementById("id_queries").addEventListener("change", function () {
+    fetch("{% url 'query_parameters' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            query_ids: Array.from(this.selectedOptions).map(o => o.value)
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        const c = document.getElementById("params-container");
+        c.innerHTML = "";
+
+        data.forEach(p => {
+            c.innerHTML += `
+                <div class="mb-2">
+                    <label class="form-label fw-semibold">
+                        ${p.query_name} → ${p.param}
+                    </label>
+                    <input type="text"
+                           name="param_${p.query_id}_${p.param}"
+                           class="form-control">
+                </div>
+            `;
+        });
+    });
+});
+
 </script>
 
 <!-- ================= STYLE ================= -->

@@ -4,9 +4,15 @@
 
 <!-- Header -->
 <div class="d-flex justify-content-between align-items-center mb-4">
+
     <h2 class="fw-bold text-dark d-flex align-items-center gap-2">
-        <i class="bi bi-database-add text-primary"></i> Créer une base de données
+       {% if edit %}
+         <i class="bi bi-pencil-square text-warning"></i> Modifier la base
+        {% else %}
+          <i class="bi bi-database-add text-primary"></i> Créer une base de données
+        {% endif %}
     </h2>
+
 
         <!-- Bouton Retour -->
     <a href="{% url 'db_list' %}"
@@ -15,6 +21,7 @@
         Retour
     </a>
 </div>
+
 
 <!-- Form Card -->
 <div class="card shadow-sm rounded-4 p-4 bg-light">
@@ -69,11 +76,21 @@
         <!-- Mot de passe -->
         <div class="mb-3">
             <label class="form-label fw-semibold">Mot de passe</label>
-            {{ form.password }}
-            {% if form.password.errors %}
+
+                <div class="input-group">
+                     {{ form.password }}
+                    <button type="button"
+                         class="btn btn-secondary"
+                         onclick="togglePassword()">
+                       <i id="eyeIcon" class="bi bi-eye"></i>
+                    </button>
+                </div>
+
+                {% if form.password.errors %}
                 <div class="text-danger small">{{ form.password.errors.0 }}</div>
-            {% endif %}
-        </div>
+                {% endif %}
+                </div>
+
 
         <!-- Nom base -->
         <div class="mb-3">
@@ -85,8 +102,13 @@
         </div>
 
         <button type="submit" class="btn btn-success rounded-pill w-100">
+          {% if edit %}
+            <i class="bi bi-check-circle-fill"></i> Mettre à jour
+          {% else %}
             <i class="bi bi-check-circle-fill"></i> Enregistrer
+          {% endif %}
         </button>
+
 
     </form>
 </div>
@@ -118,6 +140,22 @@ document.addEventListener("DOMContentLoaded", function () {
     // 🚀 Initialisation au chargement
     updatePort();
 });
+
+
+
+function togglePassword() {
+    const input = document.getElementById("id_password");
+    const icon = document.getElementById("eyeIcon");
+
+    if (input.type === "password") {
+        input.type = "text";
+        icon.classList.replace("bi-eye", "bi-eye-slash");
+    } else {
+        input.type = "password";
+        icon.classList.replace("bi-eye-slash", "bi-eye");
+    }
+}
+
 </script>
 
 {% endblock %}
