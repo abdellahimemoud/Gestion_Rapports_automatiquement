@@ -1,5 +1,9 @@
 from pathlib import Path
 
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "login"
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 # ===========================
 # BASE
 # ===========================
@@ -62,7 +66,7 @@ ROOT_URLCONF = 'rapports.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -101,6 +105,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'abdellahisidimedmemoud@gmail.com'
 EMAIL_HOST_PASSWORD = 'ghgv ujcf eovu ncqy' 
+
 
 
 # ===========================

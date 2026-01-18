@@ -5,7 +5,7 @@
 <style>
 /* ===== FOND GLOBAL ===== */
 body {
-    background: linear-gradient(135deg, #f4f6f9, #ffffff);
+    background: linear-gradient(135deg, #e9eff7, #f0f0f4);
 }
 
 /* ===== CONTENEUR PRINCIPAL ===== */
@@ -14,7 +14,7 @@ body {
 }
 
 .home-card {
-    background: #ffffff;
+    background: #f6f6fb;
     border-radius: 24px;
     padding: 70px 40px;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.08);
@@ -24,12 +24,12 @@ body {
 .title-main {
     font-size: 2.8rem;
     font-weight: 700;
-    color: #1f2937;
+    color: #1368e0;
 }
 
 .subtitle-main {
     font-size: 1.15rem;
-    color: #4b5563;
+    color: #494572;
     max-width: 720px;
     margin: 0 auto;
 }
@@ -62,7 +62,7 @@ body {
 
         <!-- TITRE -->
         <h1 class="title-main mb-3 d-flex justify-content-center align-items-center gap-3">
-            <i class="bi bi-speedometer2 text-dark"></i>
+            <i class="bi bi-speedometer2 text-primary"></i>
             Gestion des Rapports
         </h1>
 
@@ -83,7 +83,7 @@ body {
                 <i class="bi bi-file-earmark-code-fill"></i>
                 Requêtes SQL
             </a>            
-            <a href="{% url 'db_list' %}" class="btn btn-secondary btn-home">
+            <a href="{% url 'db_list' %}" class="btn btn-warning text-white btn-home">
                 <i class="bi bi-hdd-network"></i>
                 Bases de données
             </a>

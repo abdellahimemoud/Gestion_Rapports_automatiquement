@@ -8,6 +8,7 @@ from .models import (
     Report,
     ReportExecutionLog,
     ReportQueryParameter,
+    ReportEmail,   # ✅ NOUVEAU
 )
 from .utils import execute_sql_on_remote, send_report_email
 
@@ -15,10 +16,18 @@ from .utils import execute_sql_on_remote, send_report_email
 # =====================================================
 # 🔹 Exécution d'une requête SQL simple (SANS paramètres)
 # =====================================================
+# @shared_task(
+#     bind=True,
+#     autoretry_for=(Exception,),
+#     retry_kwargs={"countdown": 15, "max_retries": 3},
+# )
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),
-    retry_kwargs={"countdown": 15, "max_retries": 3},
+    retry_kwargs={
+        "countdown": 1800,  #  30 minutes
+        "max_retries": 3,   #  3 tentatives
+    },
 )
 def execute_sql_query_task(self, query_id):
     query = SqlQuery.objects.get(id=query_id)
@@ -43,22 +52,9 @@ def execute_sql_query_task(self, query_id):
             "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }]
 
-        to_emails = [e.email for e in query.emails.all()]
-        if not to_emails:
-            raise ValueError("Aucun email TO défini pour cette requête.")
 
-        send_report_email(
-            subject=f"Résultat de la requête : {query.name}",
-            body="Veuillez trouver la requête SQL en pièce jointe.",
-            to_emails=to_emails,
-            attachments=attachments,
-        )
-
-        ReportExecutionLog.objects.create(
-            report=None,
-            query=query,
-            status="success",
-            message="Requête exécutée et email envoyé avec succès",
+        raise ValueError(
+            "Aucun destinataire TO défini pour l’exécution de requête seule."
         )
 
     except Exception as e:
@@ -74,10 +70,19 @@ def execute_sql_query_task(self, query_id):
 # =====================================================
 # 🔹 Exécution d’un RAPPORT (PLUSIEURS REQUÊTES + PARAMÈTRES)
 # =====================================================
+# @shared_task(
+#     bind=True,
+#     autoretry_for=(Exception,),
+#     retry_kwargs={"countdown": 30, "max_retries": 3},
+# )
+
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),
-    retry_kwargs={"countdown": 30, "max_retries": 3},
+    retry_kwargs={
+        "countdown": 1800,  #  30 minutes
+        "max_retries": 3,   #  3 tentatives
+    },
 )
 def execute_report_task(self, report_id):
 
@@ -165,10 +170,21 @@ def execute_report_task(self, report_id):
             })
 
     # =================================================
-    # 2️⃣ Envoi Email
+    # 2️⃣ Récupération TO / CC (NOUVELLE LOGIQUE)
     # =================================================
-    to_emails = [e.email for e in report.to_emails.all()]
-    cc_emails = [e.email for e in report.cc_emails.all()]
+    to_emails = list(
+        ReportEmail.objects.filter(
+            report=report,
+            email_type="to"
+        ).values_list("email", flat=True)
+    )
+
+    cc_emails = list(
+        ReportEmail.objects.filter(
+            report=report,
+            email_type="cc"
+        ).values_list("email", flat=True)
+    )
 
     if not to_emails:
         has_error = True

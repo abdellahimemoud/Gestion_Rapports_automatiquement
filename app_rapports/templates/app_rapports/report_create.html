@@ -62,31 +62,37 @@
 </div>
 
 <!-- ================= PLANIFICATION ================= -->
-<hr>
+<!-- <hr> -->
 <h5 class="fw-semibold mb-3">
     <i class="bi bi-clock"></i> Planification
 </h5>
 
 <div class="mb-3">
-    <label class="form-label fw-semibold">Date d’exécution</label>
+    <label class="form-label fw-semibold">Rapport non périodique choisir date d’exécution </label>
     {{ form.execute_at }}
     {% if form.execute_at.errors %}
         <div class="text-danger small">
             {{ form.execute_at.errors|striptags }}
         </div>
     {% endif %}
-    <small class="text-muted">
-        Obligatoire si le rapport n’est pas périodique
-    </small>
 </div>
-
+<br>
+<!-- périodique -->
 <input type="hidden" name="client_timezone" id="client_timezone">
 
-<div class="form-check form-switch mb-3">
+<div class="form-check form-switch mb-3 d-flex align-items-center gap-2">
     {{ form.is_periodic }}
-    <label class="form-check-label fw-semibold">
+
+    <label class="form-check-label fw-semibold" for="id_is_periodic">
         Rapport périodique
     </label>
+
+     <button type="button"
+        id="periodic-badge"
+        class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+        disabled>
+       Désactivé
+       </button>
     {% if form.is_periodic.errors %}
         <div class="text-danger small">
             {{ form.is_periodic.errors|striptags }}
@@ -135,50 +141,75 @@
         {% endif %}
     </div>
 </div>
-
+<br>
 <!-- ================= DESTINATAIRES ================= -->
-<hr>
+<!-- <hr> -->
 <h5 class="fw-semibold mb-2">
     <i class="bi bi-people"></i> Destinataires
 </h5>
 
-<div class="mb-3">
+<!-- ================= TO ================= -->
+<div class="mb-2">
     <label class="form-label fw-semibold">À</label>
-    {{ form.to_emails }}
-    {% if form.to_emails.errors %}
-        <div class="text-danger small">
-            {{ form.to_emails.errors|striptags }}
-        </div>
-    {% endif %}
-    <small class="text-muted">
-        Maintenez Ctrl pour sélectionner plusieurs emails
-    </small>
+    <ul id="to-email-list" class="list-group mb-2">
+        {% for email in to_emails %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ email.email }}
+                  <button type="button"
+                    class="btn btn-sm btn-danger"
+                    onclick="removeEmail('to', '{{ email.email }}')">
+                   <i class="bi bi-trash"></i>
+                  </button>
+                 <input type="hidden" name="to_emails[]" value="{{ email.email }}">
+             </li>
+        {% endfor %}
+    </ul>
+
 </div>
 
-<div class="mb-3">
-    <label class="form-label fw-semibold">Copies CC</label>
-    {{ form.cc_emails }}
-    {% if form.cc_emails.errors %}
-        <div class="text-danger small">
-            {{ form.cc_emails.errors|striptags }}
-        </div>
-    {% endif %}
-    <small class="text-muted">
-        Maintenez Ctrl pour sélectionner plusieurs emails
-    </small>
-</div>
-<!-- ================= AJOUT EMAIL ================= -->
-<div class="input-group mb-4">
-    <input id="new-email-input" type="email" class="form-control"
-           placeholder="Ajouter un nouvel email">
-    <button type="button" class="btn btn-primary" onclick="saveEmail()">
+<div class="input-group mb-3">
+    <input id="new-to-email" type="email" class="form-control" placeholder="Ajouter email À">
+    <button type="button" class="btn btn-primary" onclick="addEmail('to')">
         <i class="bi bi-plus-circle"></i>
     </button>
 </div>
-<div class="text-danger small" id="new-email-error"></div>
+<div id="to-email-error" class="text-danger small mb-3"></div>
+
+<!-- Email est Obligatoire -->
+{% if form.non_field_errors %}
+  <div class="text-danger small mb-2">
+    {{ form.non_field_errors.0 }}
+  </div>
+{% endif %}
+<!-- ================= CC ================= -->
+<div class="mb-2">
+    <label class="form-label fw-semibold">Copies CC</label>
+        <ul id="cc-email-list" class="list-group mb-2">
+            {% for email in cc_emails %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ email.email }}
+                        <button type="button"
+                         class="btn btn-sm btn-danger"
+                          onclick="removeEmail('cc', '{{ email.email }}')">
+                           <i class="bi bi-trash"></i>
+                        </button>
+                        <input type="hidden" name="cc_emails[]" value="{{ email.email }}">
+                </li>
+            {% endfor %}
+        </ul>
+
+</div>
+
+<div class="input-group mb-3">
+    <input id="new-cc-email" type="email" class="form-control" placeholder="Ajouter email CC">
+    <button type="button" class="btn btn-primary" onclick="addEmail('cc')">
+        <i class="bi bi-plus-circle"></i>
+    </button>
+</div>
+<div id="cc-email-error" class="text-danger small mb-3"></div>
 
 <!-- ================= REQUÊTES ================= -->
-<hr>
+<!-- <hr> -->
 <h5 class="fw-semibold mb-2">
     <i class="bi bi-database"></i> Requêtes associées
 </h5>
@@ -197,7 +228,7 @@
         </div>
     {% endif %}
     <small class="text-muted">
-        Sélectionnez les requêtes à exécuter pour ce rapport
+         Maintenez Ctrl pour sélectionner plusieurs requêtes à exécuter pour ce rapport
     </small>
 </div>
 
@@ -276,33 +307,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
-// ajout email AJAX
-function saveEmail() {
-    const input = document.getElementById("new-email-input");
-    const error = document.getElementById("new-email-error");
-    const email = input.value.trim();
-    error.textContent = "";
-
-    if (!email) {
-        error.textContent = "Email invalide.";
-        return;
-    }
-
-    fetch("{% url 'save_email' %}", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": "{{ csrf_token }}"
-        },
-        body: JSON.stringify({ email })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.status === "success") location.reload();
-        else error.textContent = data.message;
-    });
-}
-
 
 // LES PARAMÈTRES
 document.getElementById("id_queries").addEventListener("change", function () {
@@ -336,6 +340,79 @@ document.getElementById("id_queries").addEventListener("change", function () {
     });
 });
 
+
+// ===== Validation email =====
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// ===== Ajouter email =====
+function addEmail(type) {
+    const input = document.getElementById(`new-${type}-email`);
+    const list = document.getElementById(`${type}-email-list`);
+    const errorDiv = document.getElementById(`${type}-email-error`);
+    const email = input.value.trim();
+
+    errorDiv.textContent = "";
+
+    if (!email) {
+        errorDiv.textContent = "Veuillez saisir un email.";
+        return;
+    }
+    if (!isValidEmail(email)) {
+        errorDiv.textContent = "Format d’email invalide.";
+        return;
+    }
+
+    // Vérifier doublon
+    const exists = Array.from(list.querySelectorAll("input")).some(i => i.value === email);
+    if (exists) {
+        errorDiv.textContent = "Email déjà ajouté.";
+        return;
+    }
+
+    // Ajouter à la liste
+    const li = document.createElement("li");
+    li.className = "list-group-item d-flex justify-content-between align-items-center";
+    li.innerHTML = `
+        ${email}
+        <button type="button" class="btn btn-sm btn-danger" onclick="removeEmail('${type}', '${email}')">
+            <i class="bi bi-trash"></i>
+        </button>
+        <input type="hidden" name="${type}_emails[]" value="${email}">
+    `;
+    list.appendChild(li);
+    input.value = "";
+}
+
+// ===== Supprimer email =====
+function removeEmail(type, email) {
+    const list = document.getElementById(`${type}-email-list`);
+    const item = Array.from(list.children).find(li => li.querySelector("input").value === email);
+    if (item) list.removeChild(item);
+}
+
+
+// BOTTON CHEK
+
+const periodicBadge = document.getElementById("periodic-badge");
+
+function updatePeriodicBadge() {
+    if (periodicSwitch.checked) {
+        periodicBadge.textContent = "Activé";
+        periodicBadge.className =
+            "btn btn-sm btn-success rounded-pill px-3";
+    } else {
+        periodicBadge.textContent = "Désactivé";
+        periodicBadge.className =
+            "btn btn-sm btn-secondary rounded-pill px-3";
+    }
+}
+
+updatePeriodicBadge();
+periodicSwitch.addEventListener("change", updatePeriodicBadge);
+
+
 </script>
 
 <!-- ================= STYLE ================= -->
@@ -350,5 +427,6 @@ select[multiple] {
     border-radius: .5rem;
 }
 </style>
+
 
 {% endblock %}

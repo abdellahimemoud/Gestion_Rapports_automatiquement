@@ -44,16 +44,6 @@ class DatabaseConnection(models.Model):
 
 
 # =======================
-# EMAILS
-# =======================
-class EmailContact(models.Model):
-    email = models.EmailField(unique=True)
-
-    def __str__(self):
-        return self.email
-
-
-# =======================
 # REQUÊTE SQL
 # =======================
 class SqlQuery(models.Model):
@@ -109,17 +99,6 @@ class Report(models.Model):
     queries = models.ManyToManyField(
         SqlQuery,
         related_name="reports"
-    )
-
-    to_emails = models.ManyToManyField(
-        EmailContact,
-        related_name="reports_to"
-    )
-
-    cc_emails = models.ManyToManyField(
-        EmailContact,
-        related_name="reports_cc",
-        blank=True
     )
 
     execute_at = models.DateTimeField(blank=True, null=True)
@@ -186,6 +165,34 @@ class Report(models.Model):
     def __str__(self):
         return f"{self.code} - {self.name}"
 
+
+# =======================
+# 📧 EMAILS LIÉS AU RAPPORT (TO / CC)
+# =======================
+class ReportEmail(models.Model):
+
+    EMAIL_TYPE_CHOICES = (
+        ("to", "TO"),
+        ("cc", "CC"),
+    )
+
+    report = models.ForeignKey(
+        Report,
+        on_delete=models.CASCADE,
+        related_name="emails"
+    )
+
+    email = models.EmailField()
+    email_type = models.CharField(
+        max_length=2,
+        choices=EMAIL_TYPE_CHOICES
+    )
+
+    class Meta:
+        unique_together = ("report", "email", "email_type")
+
+    def __str__(self):
+        return f"{self.report.code} - {self.email} ({self.email_type})"
 
 
 # =======================

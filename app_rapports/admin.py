@@ -2,7 +2,6 @@ from django.contrib import admin
 from .models import (
     DatabaseConnection,
     SqlQuery,
-    EmailContact,
     Report,
     ReportExecutionLog,
 )
@@ -26,15 +25,6 @@ class SqlQueryAdmin(admin.ModelAdmin):
     search_fields = ("name", "sql_text")
     list_filter = ("database",)
     date_hierarchy = "created_at"
-
-
-# ==============================
-# EMAIL CONTACT
-# ==============================
-@admin.register(EmailContact)
-class EmailContactAdmin(admin.ModelAdmin):
-    list_display = ("email",)
-    search_fields = ("email",)
 
 
 # ==============================
@@ -71,9 +61,7 @@ class ReportAdmin(admin.ModelAdmin):
     search_fields = ("name", "subject", "message")
 
     filter_horizontal = (
-        "queries",
-        "to_emails",
-        "cc_emails",
+        "queries",  # garder uniquement les relations existantes
     )
 
     readonly_fields = (

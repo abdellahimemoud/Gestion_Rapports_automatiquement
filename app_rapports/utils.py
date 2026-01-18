@@ -162,8 +162,9 @@ def execute_sql_on_remote(db, sql_text, params=None):
         return df
 
     except Exception as e:
+        # ⚠️ IMPORTANT : ne pas masquer l’erreur (Celery retry)
         print(f"❌ Erreur SQL ({db.db_type}) :", e)
-        return pd.DataFrame()
+        raise
 
 
 # =====================================================
