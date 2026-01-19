@@ -9,7 +9,7 @@ import oracledb
 import psycopg2
 
 from django.core.mail import EmailMessage
-
+from decouple import config
 
 # =====================================================
 # 🔄 Remplacer {sysdate}, {sysdate-7}, {sysdate+30}
@@ -203,7 +203,7 @@ def send_report_email(
     email = EmailMessage(
         subject=subject,
         body=body,
-        from_email="abdellahisidimedmemoud@gmail.com",
+        from_email=config('from_email'),
         to=to_emails,
         cc=cc_emails or []
     )

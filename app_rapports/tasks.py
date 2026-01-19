@@ -16,11 +16,6 @@ from .utils import execute_sql_on_remote, send_report_email
 # =====================================================
 # 🔹 Exécution d'une requête SQL simple (SANS paramètres)
 # =====================================================
-# @shared_task(
-#     bind=True,
-#     autoretry_for=(Exception,),
-#     retry_kwargs={"countdown": 15, "max_retries": 3},
-# )
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),
@@ -70,12 +65,6 @@ def execute_sql_query_task(self, query_id):
 # =====================================================
 # 🔹 Exécution d’un RAPPORT (PLUSIEURS REQUÊTES + PARAMÈTRES)
 # =====================================================
-# @shared_task(
-#     bind=True,
-#     autoretry_for=(Exception,),
-#     retry_kwargs={"countdown": 30, "max_retries": 3},
-# )
-
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),
