@@ -1,0 +1,94 @@
+{% extends 'app_rapports/base.html' %}
+{% block title %}Modifier utilisateur{% endblock %}
+
+{% block content %}
+<br>
+<br>
+<div class="container mt-4  rounded-4 p-4 bg-light" style="max-width: 500px;">
+   
+
+    <h4 class="fw-bold text-center mb-4">
+        <i class="bi bi-pencil-fill text-warning"></i>
+        Modifier l'utilisateur
+    </h4>
+
+    {% for message in messages %}
+        <div class="alert alert-danger text-center">
+            {{ message }}
+        </div>
+    {% endfor %}
+
+<form method="post" class="card shadow-sm p-4 border-0 rounded-4">
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Nom d'utilisateur</label>
+        <input type="text"
+               name="username"
+               class="form-control"
+               value="{{ user.username }}"
+               required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Email</label>
+        <input type="email"
+               name="email"
+               class="form-control"
+               value="{{ user.email }}"
+               required>
+    </div>
+
+    <!-- 🔐 PERMISSIONS -->
+    <div class="mb-3">
+        <label class="form-label fw-semibold">
+            <i class="bi bi-shield-lock-fill"></i> Permissions
+        </label>
+
+        <select name="role" class="form-select" required>
+
+            <!-- Utilisateur -->
+            <option value="user"
+                {% if not user.is_staff and not user.is_superuser %}selected{% endif %}>
+                Utilisateur
+            </option>
+
+            <!-- Admin -->
+            <option value="admin"
+                {% if user.is_staff and not user.is_superuser %}selected{% endif %}>
+                Admin
+            </option>
+
+            <!-- Super Admin -->
+            {% if request.user.is_superuser %}
+            <option value="superadmin"
+                {% if user.is_superuser %}selected{% endif %}
+                class="fw-bold">
+                Super Admin
+            </option>
+            {% endif %}
+        </select>
+
+        {% if user.is_superuser %}
+        <div class="form-text text-danger">
+            ⚠ Ce compte est Super Admin
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="d-flex justify-content-between">
+        <a href="{% url 'users_list' %}"
+           class="btn btn-secondary rounded-pill px-4">
+            Annuler
+        </a>
+
+        <button type="submit"
+                class="btn btn-warning rounded-pill px-4 fw-bold">
+            <i class="bi bi-check-circle-fill"></i> Enregistrer
+        </button>
+    </div>
+</form>
+
+
+</div>
+{% endblock %}

@@ -1,13 +1,14 @@
+from openpyxl.styles import Font
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.utils import timezone
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 
 import json
-import zipfile
 from io import BytesIO
 
+import pandas as pd
 import pymysql
 import psycopg2
 import cx_Oracle
@@ -37,12 +38,17 @@ from .forms import (
 
 from .utils import (
     execute_sql_on_remote,
-    df_to_excel_bytes,
-    send_report_email,
     extract_sql_parameters,
 )
-
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+from django.db.models import OuterRef, Subquery
+from .models import Report, ReportExecutionLog
   
 # =====================================================
 # HOME
@@ -65,7 +71,7 @@ def db_list(request):
         {"dbs": DatabaseConnection.objects.all()},
     )
 
-
+@login_required(login_url="login")
 def db_create(request):
     form = DatabaseForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -74,7 +80,7 @@ def db_create(request):
         return redirect("db_list")
     return render(request, "app_rapports/db_create.html", {"form": form})
 
-
+@login_required(login_url="login")
 def db_update(request, pk):
     db = get_object_or_404(DatabaseConnection, pk=pk)
     form = DatabaseConnectionForm(request.POST or None, instance=db)
@@ -87,7 +93,7 @@ def db_update(request, pk):
         "app_rapports/db_create.html",
         {"form": form, "edit": True},
     )
-
+@login_required(login_url="login")
 def db_delete(request, pk):
     db = get_object_or_404(DatabaseConnection, pk=pk)
     if SqlQuery.objects.filter(database=db).exists():
@@ -100,7 +106,7 @@ def db_delete(request, pk):
     messages.success(request, f"Base  {db.name}  supprimée avec succès")
     return redirect("db_list")
 
-
+@login_required(login_url="login")
 def test_db_connection(request, db_id):
     db = get_object_or_404(DatabaseConnection, id=db_id)
     try:
@@ -152,7 +158,7 @@ def query_list(request):
         "app_rapports/query_list.html",
         {"queries": SqlQuery.objects.all().order_by("-created_at")},
     )
-
+@login_required(login_url="login")
 def query_create(request):
     form = QueryForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -161,7 +167,7 @@ def query_create(request):
         return redirect("query_list")
     return render(request, "app_rapports/query_create.html", {"form": form})
 
-
+@login_required(login_url="login")
 def query_update(request, pk):
     query = get_object_or_404(SqlQuery, pk=pk)
     form = SqlQueryForm(request.POST or None, instance=query)
@@ -175,7 +181,7 @@ def query_update(request, pk):
         {"form": form, "edit": True},
     )
 
-
+@login_required(login_url="login")
 def query_delete(request, pk):
     query = get_object_or_404(SqlQuery, pk=pk)
     if Report.objects.filter(queries=query).exists():
@@ -192,8 +198,6 @@ def query_delete(request, pk):
 # =====================================================
 # REPORTS
 # =====================================================
-from django.db.models import OuterRef, Subquery
-from .models import Report, ReportExecutionLog
 @login_required(login_url="login")
 def report_list(request):
     q = request.GET.get("q", "").strip()
@@ -234,6 +238,7 @@ def report_logs(request, rid):
 # =====================================================
 # CREATE REPORT
 # =====================================================
+@login_required(login_url="login")
 def report_create(request):
     form = ReportForm(
     request.POST or None,
@@ -304,6 +309,7 @@ def report_create(request):
 # =====================================================
 # UPDATE REPORT
 # =====================================================
+@login_required(login_url="login")
 def report_update(request, pk):
     report = get_object_or_404(Report, pk=pk)
     form = ReportForm(request.POST or None, instance=report)
@@ -382,6 +388,7 @@ def report_update(request, pk):
 # =====================================================
 # DELETE / EXEC / DOWNLOAD
 # =====================================================
+@login_required(login_url="login")
 def report_delete(request, pk):
     report = get_object_or_404(Report, pk=pk)
     report.delete()
@@ -400,12 +407,7 @@ def report_execute(request, rid):
 # ==========================================================
 # TÉLÉCHARGEMENT RAPPORT
 # ==========================================================
-from django.http import HttpResponse, HttpResponseBadRequest
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from io import BytesIO
-import zipfile
-
+@login_required(login_url="login")
 def report_download(request, rid):
     report = get_object_or_404(Report, id=rid)
     queries = report.queries.all()
@@ -413,89 +415,93 @@ def report_download(request, rid):
     if not queries.exists():
         return HttpResponseBadRequest("Aucune requête associée à ce rapport")
 
-    # ==================================================
-    # 🟢 CAS 1 : UNE SEULE REQUÊTE
-    # ==================================================
-    if queries.count() == 1:
-        q = queries.first()
+    output = BytesIO()
 
-        params = {
-            p.name: p.value
-            for p in ReportQueryParameter.objects.filter(
-                report=report,
-                query=q
-            )
-        }
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
 
-        try:
+        for q in queries:
+            # ==========================
+            # PARAMÈTRES SQL
+            # ==========================
+            params = {
+                p.name: p.value
+                for p in ReportQueryParameter.objects.filter(
+                    report=report,
+                    query=q
+                )
+            }
+
             df = execute_sql_on_remote(
                 q.database,
                 q.sql_text,
                 params
             )
-        except Exception as e:
-            return HttpResponse(
-                f"Erreur lors de l'exécution SQL : {str(e)}",
-                status=500
-            )
 
-        excel_bytes = df_to_excel_bytes(df)
+            if df.empty:
+                df = pd.DataFrame({
+                    "INFO": [f"Aucune donnée retournée pour la requête : {q.name}"]
+                })
 
-        filename = f"{report.name}_{timezone.now():%Y%m%d%H%M%S}.xlsx"
-        response = HttpResponse(
-            excel_bytes,
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-        return response
+            # ==========================
+            # 🔢 TOTAUX (ULTRA SAFE)
+            # ==========================
+            enable_totals = getattr(q, "enable_totals", False)
+            total_columns = getattr(q, "total_columns", [])
 
-    # ==================================================
-    # 🟢 CAS 2 : PLUSIEURS REQUÊTES → ZIP
-    # ==================================================
-    zip_buffer = BytesIO()
+            if enable_totals and isinstance(total_columns, list) and not df.empty:
+                total_row = {col: "" for col in df.columns}
 
-    try:
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            for q in queries:
-                params = {
-                    p.name: p.value
-                    for p in ReportQueryParameter.objects.filter(
-                        report=report,
-                        query=q
-                    )
-                }
+                label_col = df.columns[0]
+                total_row[label_col] = getattr(q, "total_label", "TOTAL")
 
-                df = execute_sql_on_remote(
-                    q.database,
-                    q.sql_text,
-                    params
+                for col in total_columns:
+                    if col in df.columns:
+                        try:
+                            total_row[col] = (
+                                pd.to_numeric(df[col], errors="coerce")
+                                .fillna(0)
+                                .sum()
+                            )
+                        except Exception:
+                            total_row[col] = ""
+
+                df = pd.concat(
+                    [df, pd.DataFrame([total_row])],
+                    ignore_index=True
                 )
 
-                excel_bytes = df_to_excel_bytes(df)
-                zip_file.writestr(f"{q.name}.xlsx", excel_bytes)
+            sheet_name = q.name[:31]
 
-    except Exception as e:
-        return HttpResponse(
-            f"Erreur lors de la génération du ZIP : {str(e)}",
-            status=500
-        )
+            df.to_excel(
+                writer,
+                index=False,
+                sheet_name=sheet_name
+            )
 
-    zip_buffer.seek(0)
+            # ==========================
+            # STYLE EXCEL (TOTAL EN GRAS)
+            # ==========================
+            if enable_totals and not df.empty:
+                ws = writer.book[sheet_name]
+                last_row = ws.max_row
+                for cell in ws[last_row]:
+                    cell.font = Font(bold=True)
 
+    output.seek(0)
+
+    filename = f"{report.name}_{timezone.now():%Y%m%d%H%M%S}.xlsx"
     response = HttpResponse(
-        zip_buffer.getvalue(),
-        content_type="application/zip"
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    response["Content-Disposition"] = (
-        f'attachment; filename="{report.name}_{timezone.now():%Y%m%d%H%M%S}.zip"'
-    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
 
 
 # =====================================================
 # CRONTAB HELPERS
 # =====================================================
-
 def _create_or_update_schedule(report, data):
     if not report.is_periodic and report.execute_at:
         clocked, _ = ClockedSchedule.objects.get_or_create(
@@ -518,7 +524,6 @@ def _create_or_update_schedule(report, data):
             args=json.dumps([report.id]),
             enabled=True,
         )
-
 
 def _create_crontab_schedule(data):
     tz = timezone.get_current_timezone_name()
@@ -569,45 +574,45 @@ def query_parameters(request):
     return JsonResponse(response, safe=False)
 
 
-
-
-
-
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.models import User
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.core.validators import validate_email
-from django.core.exceptions import ValidationError
-
 # =========================
 # 🔐 LOGIN
 # =========================
 def login_view(request):
     if request.method == "POST":
-        username = request.POST.get("username")
+        username = request.POST.get("username")  
         password = request.POST.get("password")
 
         user = authenticate(request, username=username, password=password)
         if user:
             login(request, user)
-            return redirect("home")  # change si besoin
+            return redirect("home")  
         else:
             messages.error(request, "Nom d'utilisateur ou mot de passe incorrect")
 
     return render(request, "auth/login.html")
 
 
+# admin
+from django.contrib.auth.decorators import user_passes_test
+from django.db.models import Case, When, IntegerField
+
+def admin_required(view_func):
+    return user_passes_test(
+        lambda u: u.is_authenticated and u.is_staff,
+        login_url="home"
+    )(view_func)
+
 # =========================
 # 📝 REGISTER
 # =========================
+@admin_required
 def register_view(request):
     if request.method == "POST":
         username = request.POST.get("username")
         email = request.POST.get("email")
         password1 = request.POST.get("password1")
         password2 = request.POST.get("password2")
+        role = request.POST.get("role")
 
         if password1 != password2:
             messages.error(request, "Les mots de passe ne correspondent pas")
@@ -623,11 +628,32 @@ def register_view(request):
             messages.error(request, "Email invalide")
             return redirect("register")
 
+        # 🔒 BLOQUER SUPER ADMIN SI PAS AUTORISÉ
+        if role == "superadmin" and not request.user.is_superuser:
+            messages.error(
+                request,
+                "Vous n'avez pas l'autorisation de créer un Super Administrateur"
+            )
+            return redirect("register")
+
         user = User.objects.create_user(
             username=username,
             email=email,
             password=password1
         )
+
+        # 🔐 ATTRIBUTION DES DROITS
+        if role == "superadmin":
+            user.is_staff = True
+            user.is_superuser = True
+        elif role == "admin":
+            user.is_staff = True
+            user.is_superuser = False
+        else:
+            user.is_staff = False
+            user.is_superuser = False
+
+        user.save()
         login(request, user)
         return redirect("home")
 
@@ -637,10 +663,112 @@ def register_view(request):
 # =========================
 # 🚪 LOGOUT
 # =========================
-
+@login_required(login_url="login")
 def logout_view(request):
     if request.method == "POST":
         logout(request)
     return redirect("login")
+
+
+
+# Liste complète des utilisateurs
+@admin_required
+def users_list(request):
+    users = User.objects.annotate(
+        role_order=Case(
+            When(is_superuser=True, then=0),  
+            When(is_staff=True, then=1),        
+            default=2,                          
+            output_field=IntegerField()
+        )
+    ).order_by("role_order", "username")
+
+    return render(request, "auth/users_list.html", {
+        "users": users
+    })
+
+#Modifier utilisateur
+@admin_required
+def user_edit(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+
+    # 🔒 PROTECTION SUPER ADMIN
+    if user.is_superuser and not request.user.is_superuser:
+        messages.error(
+            request,
+            "Vous n'avez pas l'autorisation de modifier un Super Administrateur"
+        )
+        return redirect("users_list")
+
+    if request.method == "POST":
+        username = request.POST.get("username")
+        email = request.POST.get("email")
+        role = request.POST.get("role")  
+
+        # 🔁 Username unique
+        if User.objects.exclude(id=user.id).filter(username=username).exists():
+            messages.error(request, "Nom d'utilisateur déjà utilisé")
+            return redirect("user_edit", user_id=user.id)
+
+        user.username = username
+        user.email = email
+
+        # 🔐 GESTION DES PERMISSIONS
+        if role == "superadmin":
+            if not request.user.is_superuser:
+                messages.error(
+                    request,
+                    "Action non autorisée : Super Administrateur"
+                )
+                return redirect("users_list")
+
+            user.is_staff = True
+            user.is_superuser = True
+
+        elif role == "admin":
+            user.is_staff = True
+            user.is_superuser = False
+
+        else:  # user
+            user.is_staff = False
+            user.is_superuser = False
+
+        user.save()
+
+        messages.success(request, "Utilisateur modifié avec succès")
+        return redirect("users_list")
+
+    return render(request, "auth/user_edit.html", {
+        "user": user
+    })
+
+# Supprimer  utilisateur
+@admin_required
+def user_delete(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+
+    # ❌ Empêcher l'auto-suppression
+    if user == request.user:
+        messages.error(
+            request,
+            "Vous ne pouvez pas supprimer votre propre compte"
+        )
+        return redirect("users_list")
+
+    # 🔒 Protection Super Admin
+    if user.is_superuser and not request.user.is_superuser:
+        messages.error(
+            request,
+            "Vous n'avez pas l'autorisation de supprimer un Super Administrateur"
+        )
+        return redirect("users_list")
+
+    if request.method == "POST":
+        user.delete()
+        messages.success(request, "Utilisateur supprimé avec succès")
+        return redirect("users_list")
+
+    return redirect("users_list")
+
 
 

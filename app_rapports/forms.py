@@ -53,25 +53,121 @@ class DatabaseConnectionForm(forms.ModelForm):
 # ============================================================
 
 class QueryForm(forms.ModelForm):
+    # 🔢 Colonnes à sommer (input texte)
+    total_columns = forms.CharField(
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Ex: montant"
+            }
+        )
+    )
+
     class Meta:
         model = SqlQuery
-        fields = ["name", "database", "sql_text"]
+        fields = [
+            "name",
+            "sql_text",
+            "database",
+
+            # ➕ TOTAUX
+            "enable_totals",
+            "total_columns",
+            "total_label",
+        ]
+
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
+            "sql_text": forms.Textarea(
+                attrs={"class": "form-control", "rows": 6}
+            ),
             "database": forms.Select(attrs={"class": "form-select"}),
-            "sql_text": forms.Textarea(attrs={"class": "form-control", "rows": 6}),
+
+            "enable_totals": forms.CheckboxInput(
+                attrs={"class": "form-check-input"}
+            ),
+            "total_label": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "TOTAL"
+                }
+            ),
         }
 
+    # ===============================
+    # 🔐 Nettoyage colonnes
+    # ===============================
+    def clean_total_columns(self):
+        value = self.cleaned_data.get("total_columns")
+
+        if not value:
+            return []
+
+        return [
+            v.strip()
+            for v in value.split(",")
+            if v.strip()
+        ]
 
 class SqlQueryForm(forms.ModelForm):
+
+    # 🔢 Colonnes à sommer (input texte)
+    total_columns = forms.CharField(
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Ex: montant"
+            }
+        )
+    )
+
     class Meta:
         model = SqlQuery
-        fields = ["name", "sql_text", "database"]
+        fields = [
+            "name",
+            "sql_text",
+            "database",
+
+            # ➕ TOTAUX
+            "enable_totals",
+            "total_columns",
+            "total_label",
+        ]
+
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
-            "sql_text": forms.Textarea(attrs={"class": "form-control", "rows": 6}),
+            "sql_text": forms.Textarea(
+                attrs={"class": "form-control", "rows": 6}
+            ),
             "database": forms.Select(attrs={"class": "form-select"}),
+
+            "enable_totals": forms.CheckboxInput(
+                attrs={"class": "form-check-input"}
+            ),
+            "total_label": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "TOTAL"
+                }
+            ),
         }
+
+    # ===============================
+    # 🔐 Nettoyage colonnes
+    # ===============================
+    def clean_total_columns(self):
+        value = self.cleaned_data.get("total_columns")
+
+        if not value:
+            return []
+
+        return [
+            v.strip()
+            for v in value.split(",")
+            if v.strip()
+        ]
 
 
 # ============================================================
@@ -79,7 +175,7 @@ class SqlQueryForm(forms.ModelForm):
 # ============================================================
 
 class ReportForm(forms.ModelForm):
-
+    
     queries = forms.ModelMultipleChoiceField(
         queryset=SqlQuery.objects.all().order_by("name"),
         widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),

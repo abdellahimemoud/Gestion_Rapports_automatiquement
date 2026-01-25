@@ -56,6 +56,16 @@ class SqlQuery(models.Model):
     )
 
     sql_text = models.TextField(verbose_name="Requête SQL")
+
+    # ✅ TOTAUX (REQUÊTE SEULE)
+    enable_totals = models.BooleanField(default=False)
+    total_columns = models.JSONField(default=list, blank=True)
+    total_label = models.CharField(
+        max_length=200,
+        default="TOTAL",
+        blank=True
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

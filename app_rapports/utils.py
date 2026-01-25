@@ -265,3 +265,39 @@ def test_database_connection(db):
     except Exception as e:
         print(f"❌ Erreur connexion ({db.db_type}) :", e)
         return False
+
+
+# message erreur
+def humanize_email_error(error: Exception) -> str:
+    error_str = str(error).lower()
+
+    if "getaddrinfo failed" in error_str:
+        return (
+            "Impossible de se connecter au serveur email. "
+            "Vérifiez votre connexion Internet."
+        )
+
+    if "connection refused" in error_str:
+        return (
+            "La connexion au serveur email a été refusée. "
+            "Le serveur SMTP est peut-être indisponible."
+        )
+
+    if "authentication" in error_str or "login" in error_str:
+        return (
+            "Échec de l’authentification email. "
+            "Vérifiez l’adresse email et le mot de passe SMTP."
+        )
+
+    if "recipient" in error_str:
+        return (
+            "Une ou plusieurs adresses email sont invalides."
+        )
+
+    if "timeout" in error_str:
+        return (
+            "Le serveur email ne répond pas (délai dépassé). "
+            "Veuillez réessayer plus tard."
+        )
+
+    return f"Erreur inconnue lors de l’envoi de l’email : {str(error)}"

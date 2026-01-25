@@ -1,0 +1,101 @@
+{% extends 'app_rapports/base.html' %}
+{% block title %}Liste des utilisateurs{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold">
+            <i class="bi bi-people-fill text-primary"></i> Utilisateurs
+        </h4>
+
+        {% if request.user.is_staff %}
+        <a href="{% url 'register' %}"
+           class="btn btn-success btn-sm rounded-pill">
+            <i class="bi bi-person-plus-fill"></i> Créer compte
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="table-responsive shadow-sm rounded">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th></th>
+                    <th>Nom d'utilisateur</th>
+                    <th>Email</th>
+                    <th>Rôle</th>
+                    <th>Date création</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            {% for u in users %}
+                <tr class="hover-row">
+                    <td>{{ forloop.counter }}</td>
+                    <td class="fw-semibold">{{ u.username }}</td>
+                    <td>{{ u.email }}</td>
+
+                    <!-- 🔐 ROLE -->
+                    <td>
+                        {% if u.is_superuser %}
+                            <span class="badge rounded-pill bg-danger">
+                                <i class="bi bi-shield-lock-fill"></i> Super Admin
+                            </span>
+                        {% elif u.is_staff %}
+                            <span class="badge rounded-pill bg-primary">
+                                <i class="bi bi-shield-check"></i> Admin
+                            </span>
+                        {% else %}
+                            <span class="badge rounded-pill bg-secondary">
+                                <i class="bi bi-person-fill"></i> Utilisateur
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>{{ u.date_joined|date:"d/m/Y H:i" }}</td>
+
+                    <!-- ⚙️ ACTIONS -->
+                    <td class="text-center">
+                        {% if request.user.is_staff %}
+
+                            {# ✏️ Modifier #}
+                            {% if request.user.is_superuser or not u.is_superuser %}
+                                <a href="{% url 'user_edit' u.id %}"
+                                   class="btn btn-warning btn-sm rounded-pill">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </a>
+                            {% endif %}
+
+                            {# 🗑 Supprimer #}
+                            {% if u != request.user %}
+                                {% if request.user.is_superuser or not u.is_superuser %}
+                                    <form method="post"
+                                          action="{% url 'user_delete' u.id %}"
+                                          class="d-inline"
+                                          onsubmit="return confirm(' ⚠ Supprimer cet utilisateur ?');">
+                                        {% csrf_token %}
+                                        <button class="btn btn-danger btn-sm rounded-pill">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        Aucun utilisateur trouvé
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}

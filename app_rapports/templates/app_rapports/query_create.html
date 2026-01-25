@@ -55,6 +55,35 @@
         </div>
     {% endif %}
 </div>
+<!-- ================= TOTAUX ================= -->
+<h5 class="fw-semibold mt-4">
+    <i class="bi bi-calculator"></i> Total
+</h5>
+
+<div class="form-check form-switch mb-3">
+    {{ form.enable_totals }}
+    <label class="form-check-label fw-semibold" for="id_enable_totals">
+        Activer total pour cette requête
+    </label>
+</div>
+
+<div id="totals-block" style="display:none;">
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">
+            Colonnes à sommer
+        </label>
+        {{ form.total_columns }}
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">
+            Nom affiché de la ligne total
+        </label>
+        {{ form.total_label }}
+    </div>
+
+</div>
 
 <!-- ================= BASE ================= -->
 <div class="mb-4">
@@ -95,5 +124,17 @@
     border-radius: .5rem;
 }
 </style>
+<script>
+const totalsSwitch = document.getElementById("id_enable_totals");
+const totalsBlock = document.getElementById("totals-block");
+
+function toggleTotals() {
+    if (!totalsSwitch) return;
+    totalsBlock.style.display = totalsSwitch.checked ? "block" : "none";
+}
+
+toggleTotals();
+totalsSwitch.addEventListener("change", toggleTotals);
+</script>
 
 {% endblock %}

@@ -1,12 +1,15 @@
 from django.urls import path
 from . import views
-from .views import login_view, register_view, logout_view
+from .views import login_view, register_view, logout_view, user_delete, user_edit, users_list
 from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     
     path("login/", login_view, name="login"),
     path("register/", register_view, name="register"),
+    path("users/", users_list, name="users_list"),
+    path("users/edit/<int:user_id>/", user_edit, name="user_edit"),
+    path("users/delete/<int:user_id>/", user_delete, name="user_delete"),
     path("logout/", logout_view, name="logout"),
 
 

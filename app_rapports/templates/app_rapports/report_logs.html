@@ -41,19 +41,37 @@
                 <tr>
                     <td>{{ log.created_at|date:"d/m/Y H:i" }}</td>
 
-                    <td class="text-center">
-                        {% if log.status == "success" %}
-                            <span class="badge bg-success rounded-pill px-3">
-                                <i class="bi bi-check-circle me-1"></i>
-                                Envoyé
-                            </span>
-                        {% else %}
-                            <span class="badge bg-danger rounded-pill px-3">
-                                <i class="bi bi-x-circle me-1"></i>
-                                Échec
-                            </span>
-                        {% endif %}
-                    </td>
+                <td class="text-center">
+
+                {% if "email" in log.message|lower %}
+                 {% if log.status == "success" %}
+                <span class="badge bg-success rounded-pill px-3">
+                  <i class="bi bi-envelope-check me-1"></i>
+                  Envoyé
+                </span>
+                {% else %}
+                <span class="badge bg-danger rounded-pill px-3">
+                <i class="bi bi-envelope-x me-1"></i>
+                Échec envoi
+                 </span>
+                {% endif %}
+
+               {% else %}
+               {% if log.status == "success" %}
+                <span class="badge bg-success rounded-pill px-3">
+                   <i class="bi bi-check-circle me-1"></i>
+                   Succès
+                </span>
+               {% else %}
+                <span class="badge bg-danger rounded-pill px-3">
+                <i class="bi bi-x-circle me-1"></i>
+                Échec
+                </span>
+               {% endif %}
+               {% endif %}
+
+                </td>
+
 
                     <td class="text-muted small">
                         {{ log.message }}
